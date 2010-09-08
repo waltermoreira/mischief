@@ -8,9 +8,8 @@ for the options which are updated from the config files.
 """
 
 import os
-import os.path
+from os.path import dirname, join, abspath
 from ConfigParser import ConfigParser
-from hetcommon.globals import HET2_DEPLOY
 
 def read_config(cfg, mod):
     """
@@ -49,8 +48,17 @@ def load_config(name, mod):
     except KeyError:
         error('Environment variable HET2_AUXIL must point to the auxil directory')
 
-    cfg_file = os.path.join(HET2_DEPLOY, 'etc', name+'.conf')
+    cfg_file = join(HET2_DEPLOY, 'etc', name+'.conf')
     cfg = ConfigParser()
-    cfg.read(cfg_file)
+    res = cfg.read(cfg_file)
+    if res:
+        print 'Loaded config file:', cfg_file
+    else:
+        print 'No config file found in', join(HET2_DEPLOY, 'etc')
+        print 'Using defaults from module logger.config'
     read_config(cfg, mod)
 
+def setup(fname):
+    global HET2_DEPLOY
+    HET2_DEPLOY = abspath(join(dirname(abspath(fname)), '../'))
+    
