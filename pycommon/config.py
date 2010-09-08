@@ -11,6 +11,9 @@ import os
 from os.path import dirname, join, abspath
 from ConfigParser import ConfigParser
 
+HET2_DEPLOY = None
+HET2_AUXIL = None
+
 def read_config(cfg, mod):
     """
     Update the module ''mod'' from the values of the
@@ -42,12 +45,6 @@ def load_config(name, mod):
 
     or substituting gui for logger.
     """
-    try:
-        # check auxil existence to locate mongodb executable
-        auxil = os.environ['HET2_AUXIL']
-    except KeyError:
-        error('Environment variable HET2_AUXIL must point to the auxil directory')
-
     cfg_file = join(HET2_DEPLOY, 'etc', name+'.conf')
     cfg = ConfigParser()
     res = cfg.read(cfg_file)
@@ -55,10 +52,14 @@ def load_config(name, mod):
         print 'Loaded config file:', cfg_file
     else:
         print 'No config file found in', join(HET2_DEPLOY, 'etc')
-        print 'Using defaults from module logger.config'
+        print 'Using defaults from module %s.config' %name
     read_config(cfg, mod)
 
 def setup(fname):
-    global HET2_DEPLOY
-    HET2_DEPLOY = abspath(join(dirname(abspath(fname)), '../'))
+    global HET2_DEPLOY, HET2_AUXIL
     
+    HET2_DEPLOY = abspath(join(dirname(abspath(fname)), '../'))
+    try:
+        HET2_AUXIL = os.environ['HET2_AUXIL']
+    except KeyError:
+        error('Environment variable HET2_AUXIL must point to the auxil directory')        
