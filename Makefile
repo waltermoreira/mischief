@@ -11,5 +11,5 @@ install:
 	python setup.py install --prefix=$(HET2_DEPLOY)
 
 uninstall:
-	rm -rf $(HET2_AUXIL)/Python/lib/python$(PYTHON_VERSION)/site-packages/pycommon
-	rm -rf $(HET2_AUXIL)/Python/lib/python$(PYTHON_VERSION)/site-packages/PyCommon*
+	rm -rf $(HET2_DEPLOY)/lib/python$(PYTHON_VERSION)/site-packages/pycommon
+	rm -rf $(HET2_DEPLOY)/lib/python$(PYTHON_VERSION)/site-packages/PyCommon*
