@@ -7,9 +7,11 @@ options.  The module :mod:`~logger.config` contains the default values
 for the options which are updated from the config files.
 """
 
+import sys
 import os
 from os.path import dirname, join, abspath
 from ConfigParser import ConfigParser
+import logger.compilestats as stats
 
 HET2_DEPLOY = None
 HET2_AUXIL = None
@@ -63,3 +65,14 @@ def setup(fname):
         HET2_AUXIL = os.environ['HET2_AUXIL']
     except KeyError:
         error('Environment variable HET2_AUXIL must point to the auxil directory')        
+
+def display_compile_stats():
+    print '****************************************************'
+    print '* Source         - %s' %os.path.abspath(sys.argv[0])
+    print '* Compile_branch - %s' %stats.compiled_git_branch
+    print '* Compile_sha    - %s' %stats.compiled_git_sha
+    print '* Compile_user   - %s' %stats.compiled_user
+    print '* Compile_host   - %s' %stats.compiled_host
+    print '* Compile_date   - %s' %stats.compiled_date
+    print '****************************************************'
+
