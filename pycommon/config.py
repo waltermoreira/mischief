@@ -9,9 +9,9 @@ for the options which are updated from the config files.
 
 import sys
 import os
+import importlib
 from os.path import dirname, join, abspath
 from ConfigParser import ConfigParser
-import logger.compilestats as stats
 
 HET2_DEPLOY = None
 HET2_AUXIL = None
@@ -56,6 +56,8 @@ def load_config(name, mod):
         print 'No config file found in', join(HET2_DEPLOY, 'etc')
         print 'Using defaults from module %s.config' %name
     read_config(cfg, mod)
+    global stats
+    stats = importlib.import_module(name+'.compilestats')
 
 def setup(fname):
     global HET2_DEPLOY, HET2_AUXIL
