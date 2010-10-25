@@ -51,10 +51,10 @@ def load_config(name, mod):
     cfg = ConfigParser()
     res = cfg.read(cfg_file)
     if res:
-        print 'Loaded config file:', cfg_file
+        print >>sys.stderr, 'Loaded config file:', cfg_file
     else:
-        print 'No config file found in', join(HET2_DEPLOY, 'etc')
-        print 'Using defaults from module %s.config' %name
+        print >>sys.stderr, 'No config file found in', join(HET2_DEPLOY, 'etc')
+        print >>sys.stderr, 'Using defaults from module %s.config' %name
     read_config(cfg, mod)
     global stats
     stats = importlib.import_module(name+'.compilestats')
@@ -69,12 +69,12 @@ def setup(fname):
         error('Environment variable HET2_AUXIL must point to the auxil directory')        
 
 def display_compile_stats():
-    print '****************************************************'
-    print '* Source         - %s' %os.path.abspath(sys.argv[0])
-    print '* Compile_branch - %s' %stats.compiled_git_branch
-    print '* Compile_sha    - %s' %stats.compiled_git_sha
-    print '* Compile_user   - %s' %stats.compiled_user
-    print '* Compile_host   - %s' %stats.compiled_host
-    print '* Compile_date   - %s' %stats.compiled_date
-    print '****************************************************'
+    print >>sys.stderr,  '****************************************************'
+    print >>sys.stderr,  '* Source         - %s' %os.path.abspath(sys.argv[0])
+    print >>sys.stderr,  '* Compile_branch - %s' %stats.compiled_git_branch
+    print >>sys.stderr,  '* Compile_sha    - %s' %stats.compiled_git_sha
+    print >>sys.stderr,  '* Compile_user   - %s' %stats.compiled_user
+    print >>sys.stderr,  '* Compile_host   - %s' %stats.compiled_host
+    print >>sys.stderr,  '* Compile_date   - %s' %stats.compiled_date
+    print >>sys.stderr,  '****************************************************'
 
