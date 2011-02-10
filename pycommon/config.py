@@ -10,6 +10,7 @@ for the options which are updated from the config files.
 import sys
 import os
 import importlib
+import inspect
 from os.path import dirname, join, abspath
 from ConfigParser import ConfigParser
 
@@ -78,3 +79,15 @@ def display_compile_stats():
     print >>sys.stderr,  '* Compile_date   - %s' %stats.compiled_date
     print >>sys.stderr,  '****************************************************'
 
+def use_local_config(filename):
+    """
+    Execute/source/inline a Python file in the current scope.
+    """
+    if not filename.endswith('.py'):
+        filename += '.py'
+    try:
+        caller = inspect.stack()[1][0]
+        execfile(filename, caller.f_globals, caller.f_locals)
+    finally:
+        del caller
+    
