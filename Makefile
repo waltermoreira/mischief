@@ -13,3 +13,6 @@ install:
 uninstall:
 	rm -rf $(HET2_DEPLOY)/lib/python$(PYTHON_VERSION)/site-packages/pycommon
 	rm -rf $(HET2_DEPLOY)/lib/python$(PYTHON_VERSION)/site-packages/PyCommon*
+
+.PHONY: debug
+debug: all
