@@ -13,6 +13,7 @@ import importlib
 import inspect
 from os.path import dirname, join, abspath
 from ConfigParser import ConfigParser
+import log
 
 HET2_DEPLOY = None
 HET2_AUXIL = None
@@ -59,7 +60,8 @@ def load_config(name, mod):
     read_config(cfg, mod)
     global stats
     stats = importlib.import_module(name+'.compilestats')
-
+    log.setup_log(name, HET2_DEPLOY)
+    
 def setup(fname):
     global HET2_DEPLOY, HET2_AUXIL
     
@@ -67,7 +69,7 @@ def setup(fname):
     try:
         HET2_AUXIL = os.environ['HET2_AUXIL']
     except KeyError:
-        error('Environment variable HET2_AUXIL must point to the auxil directory')        
+        error('Environment variable HET2_AUXIL must point to the auxil directory')
 
 def display_compile_stats():
     print >>sys.stderr,  '****************************************************'
