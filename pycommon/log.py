@@ -16,37 +16,53 @@ def pairwise(iterable):
     next(b, None)
     return itertools.izip(a, b)
 
+def get_dict(msg):
+    """
+    'foo := 5 and bar := "a b"' -> {'foo': 5
+                                    'bar': 'a b'}
+    """
+    result = {}
+    for (k, v) in pairwise(re.split(':=', msg)):
+        # key is the last word before :=
+        key = k.split()[-1]
+        v = v.lstrip()
+        c = v[0]
+        if c in ('"', "'"):
+            # value is a quoted string, extract it
+            g = re.match(r'((?:[^%c\\]|\\.)*)' %c, v[1:])
+            val = g.group(1)
+        else:
+            # value may be an integer, float, or word after :=
+            val = v.split()[0]
+            try:
+                val = int(val)
+            except ValueError:
+                try:
+                    val = float(val)
+                except ValueError:
+                    pass
+        result[key] = val
+    return result
+    
 class JSONFormatter(logging.Formatter):
 
     def __init__(self, *args, **kwargs):
         super(JSONFormatter, self).__init__(*args, **kwargs)
 
     def format(self, record):
-        super(JSONFormatter, self).format(record)
-        return 'log ' + json.dumps(self.parse_message(record))
+        #super(JSONFormatter, self).format(record)
+        return 'log ' + json.dumps(self.parse_message(record)) + '\n'
 
     def parse_message(self, record):
-        msg = record.message
-        result = {}
-        for (k, v) in pairwise(re.split(':=', msg)):
-            key = k.split()[-1]
-            v = v.lstrip()
-            c = v[0]
-            if c in ('"', "'"):
-                g = re.match(r'((?:[^%c\\]|\\.)*)' %c, v[1:])
-                val = g.group(1)
-            else:
-                val = v.split()[0]
-                try:
-                    val = int(val)
-                except ValueError:
-                    try:
-                        val = float(val)
-                    except ValueError:
-                        pass
-            result[key] = val
+        msg = record.getMessage()
+        result = get_dict(msg)
+        result['message'] = msg
+        result['function'] = record.funcName
+        result['file'] = record.pathname
+        result['line'] = record.lineno
+        result['level'] = record.levelname
         return result
-            
+    
 def setup_log(mod_name, deploy_dir):
     LOGGER_FILE = logging.getLogger('file')
     LOGGER_DEBUG = logging.getLogger('file.console')
