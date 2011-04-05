@@ -43,25 +43,31 @@ def get_dict(msg):
                     pass
         result[key] = val
     return result
+
+def parse_message(record):
+    msg = record.getMessage()
+    result = get_dict(msg)
+    result['message'] = msg
+    result['function'] = record.funcName
+    result['file'] = record.pathname
+    result['line'] = record.lineno
+    result['level'] = record.levelname
+    return result
+
+def make_log_command(record):
+    return ('log ' +
+            json.dumps(parse_message(record)) +
+            '\n')
+    
+class JSONSocketHandler(logging.handlers.SocketHandler):
+
+    def makePickle(self, record):
+        return make_log_command(record)
     
 class JSONFormatter(logging.Formatter):
 
-    def __init__(self, *args, **kwargs):
-        super(JSONFormatter, self).__init__(*args, **kwargs)
-
     def format(self, record):
-        #super(JSONFormatter, self).format(record)
-        return 'log ' + json.dumps(self.parse_message(record)) + '\n'
-
-    def parse_message(self, record):
-        msg = record.getMessage()
-        result = get_dict(msg)
-        result['message'] = msg
-        result['function'] = record.funcName
-        result['file'] = record.pathname
-        result['line'] = record.lineno
-        result['level'] = record.levelname
-        return result
+        return make_log_command(record)
     
 def setup_log(mod_name, deploy_dir):
     LOGGER_FILE = logging.getLogger('file')
@@ -70,23 +76,29 @@ def setup_log(mod_name, deploy_dir):
     LOGGER_FULL = logging.getLogger('file.full')
     
     fname = os.path.join(deploy_dir, 'log', mod_name, 'gui.log')
-    file_handler = logging.handlers.RotatingFileHandler(fname)
-    formatter = logging.Formatter(
-        "%(asctime)s %(levelname)-8s [%(filename)30s:%(lineno)-4s] - %(message)s")
-    file_handler.setFormatter(formatter)
 
-    json_formatter = JSONFormatter()
-    
+    file_handler = logging.handlers.RotatingFileHandler(fname)
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(json_formatter)
+    socket_handler = JSONSocketHandler('localhost', 8070)
+
+    formatter = logging.Formatter(
+        "%(asctime)s %(levelname)-8s "
+        "[%(filename)30s:%(lineno)-4s] "
+        "- %(message)s")
+    json_formatter = JSONFormatter()
+
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
 
     LOGGER_FILE.addHandler(file_handler)
     LOGGER_FILE.setLevel(logging.DEBUG)
 
     LOGGER_DEBUG.addHandler(console_handler)
     LOGGER_DEBUG.setLevel(logging.DEBUG)
+
+    LOGGER_LOGGER.addHandler(socket_handler)
+    LOGGER_LOGGER.setLevel(logging.DEBUG)
     
-    
-def test():
+def test(s):
     setup_log('gui', '/home/moreira/deploy')
-    return logging.getLogger('file.console')
+    return logging.getLogger(s)
