@@ -2,6 +2,7 @@ import multiprocessing as m
 import multiprocessing.managers as managers
 import threading
 import Queue
+import sys
 
 class ConnectionManager(managers.BaseManager):
     pass
@@ -58,7 +59,10 @@ class Actor(object):
                 break
             processed.put(msg)
         action = patterns[msg['tag']]
-        f = getattr(self, action)
+        if isinstance(action, str):
+            f = getattr(self, action)
+        elif callable(action):
+            f = action
         while not processed.empty():
             self.inbox.put(processed.get())
         f(msg)
@@ -99,11 +103,13 @@ class Test(ProcessActor):
         q.put({'tag': 'ack', 'answer': 5})
         
     def act(self):
+        x = 3
         while True:
             self.receive(
                 {'test': 'test',
                  'foo': 'foo',
                  'queue': 'queue',
+                 'fun': lambda msg: sys.stdout.write('--> %s\n' %x),
                  'reply_me': 'reply_me'})
             print 'After receive'
             
