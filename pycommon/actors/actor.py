@@ -56,9 +56,13 @@ class Actor(object):
         while True:
             msg = self.inbox.get()
             if msg['tag'] in patterns:
+                matched = msg['tag']
+                break
+            if '*' in patterns:
+                matched = '*'
                 break
             processed.put(msg)
-        action = patterns[msg['tag']]
+        action = patterns[matched]
         if isinstance(action, str):
             f = getattr(self, action)
         elif callable(action):
@@ -110,7 +114,8 @@ class Test(ProcessActor):
                  'foo': 'foo',
                  'queue': 'queue',
                  'fun': lambda msg: sys.stdout.write('--> %s\n' %x),
-                 'reply_me': 'reply_me'})
+                 'reply_me': 'reply_me',
+                 '*': lambda msg: sys.stdout.write('any other stuff\n')})
             print 'After receive'
             
 class SyncTest(ProcessActor):
