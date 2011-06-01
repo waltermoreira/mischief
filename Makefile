@@ -4,6 +4,7 @@ all:
 clean:
 	python setup.py clean
 
+.PHONY: test
 test:
 	py.test
 
