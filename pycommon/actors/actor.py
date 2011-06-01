@@ -1,3 +1,29 @@
+"""
+:mod:`pycommon.actors.actor` -- Actor library
+=============================================
+
+.. module:: actor
+.. moduleauthor:: Walter Moreira <moreira@astro.as.utexas.edu>
+
+An implementation of the `actor model`_.
+
+A queue manager must be created somewhere, and started::
+
+  qm = QueueManager(address=('localhost', 5000), authkey='actor')
+  qm.start()
+
+An actor inherits from ``ThreadedActor`` or ``ProcessActor``, and it
+implements the method ``act()``::
+
+  class MyActor(ThreadedActor):
+      def act(self):
+          self.receive({
+              'foo': lambda msg: None
+              })
+
+.. _actor model: http://en.wikipedia.org/wiki/Actor_model
+"""
+
 import multiprocessing as m
 import multiprocessing.managers as managers
 import threading
