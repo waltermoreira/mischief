@@ -29,6 +29,7 @@ import multiprocessing.managers as managers
 import threading
 import Queue
 import sys
+import time
 
 class ConnectionManager(managers.BaseManager):
     pass
@@ -72,15 +73,24 @@ class Actor(object):
     def send(self, to, msg):
         self.get_inbox(to).put(msg)
 
-    def receive(self, patterns):
+    def receive(self, patterns, timeout=None):
         """
         patterns have the form::
 
           {a_tag: a_method, ...}
         """
         processed = Queue.Queue()
+        start_time = time.time()
+        msg = {}
         while True:
-            msg = self.inbox.get()
+            current_time = time.time()
+            if timeout is not None and current_time >= start_time + timeout:
+                matched = 'timeout'
+                break
+            try:
+                msg = self.inbox.get(True, 0.01)
+            except Queue.Empty:
+                continue
             if msg['tag'] in patterns:
                 matched = msg['tag']
                 break
@@ -88,7 +98,10 @@ class Actor(object):
                 matched = '*'
                 break
             processed.put(msg)
-        action = patterns[matched]
+        try:
+            action = patterns[matched]
+        except KeyError:
+            return
         if isinstance(action, str):
             f = getattr(self, action)
         elif callable(action):
@@ -115,6 +128,12 @@ class ProcessActor(Actor):
         self.proc = m.Process(target=self.act)
         self.proc.daemon = True
         self.proc.start()
+
+class TimeoutTest(Actor):
+
+    def act(self):
+        self.receive({'test': 'test'},
+                     timeout=5)
         
 class Test(ProcessActor):
 
@@ -141,7 +160,8 @@ class Test(ProcessActor):
                  'queue': 'queue',
                  'fun': lambda msg: sys.stdout.write('--> %s\n' %x),
                  'reply_me': 'reply_me',
-                 '*': lambda msg: sys.stdout.write('any other stuff\n')})
+                 '*': lambda msg: sys.stdout.write('any other stuff\n')},
+                timeout=10)
             print 'After receive'
             
 class SyncTest(ProcessActor):

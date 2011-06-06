@@ -39,3 +39,15 @@ def test_wildcard(qm):
     qa = qm.get_named('a')
     qa.put({'tag': 'foo'})
     assert x.act() == ['foo']
+
+def test_timeout(qm):
+    class a(Actor):
+        def act(self):
+            result = [False]
+            self.receive(
+                {
+                'timeout': lambda msg: result.append(True)},
+                timeout=0.1)
+            return result
+    x = a('a')
+    assert x.act()[-1]
