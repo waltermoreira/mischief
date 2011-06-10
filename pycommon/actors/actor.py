@@ -29,6 +29,8 @@ import multiprocessing.managers as managers
 import threading
 import Queue
 import sys
+import os
+import signal
 import time
 
 class ConnectionManager(managers.BaseManager):
@@ -210,6 +212,17 @@ class ProcessActor(Actor):
         self.proc = m.Process(target=self.act)
         self.proc.daemon = True
         self.proc.start()
+
+    def kill(self):
+        """
+        Kill the process containing the actor.
+        """
+        pid = self.proc.pid
+        self.proc.terminate()
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except OSError:
+            pass
 
 class TimeoutTest(Actor):
 
