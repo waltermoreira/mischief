@@ -37,6 +37,8 @@ class ConnectionManager(managers.BaseManager):
 class ActorManager(managers.BaseManager):
 
     def __init__(self, *args, **kwargs):
+        kwargs['address'] = ('localhost', 5000)
+        kwargs['authkey'] = 'actor'
         super(ActorManager, self).__init__(*args, **kwargs)
         self._manager = m.Manager()
         self.register('create_queue', callable=self.create_queue)
@@ -80,7 +82,7 @@ class Actor(object):
     """
     def __init__(self, name):
         self.name = name
-        self.qm = ActorManager(address=('localhost', 5000), authkey='actor')
+        self.qm = ActorManager()
         self.qm.connect()
         self.qm.create_queue(self.name)
         self.inbox = self.qm.get_named(self.name)
