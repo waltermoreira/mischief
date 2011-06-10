@@ -232,6 +232,9 @@ class ProcessActor(Actor):
         except OSError:
             pass
 
+    def pid(self):
+        return self.proc.pid
+    
 class TimeoutTest(Actor):
 
     def act(self):
