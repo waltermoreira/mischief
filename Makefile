@@ -1,5 +1,6 @@
 all:
 	python setup.py install --prefix=$(HET2_DEPLOY)
+	$(MAKE) html --directory=doc
 
 clean:
 	python setup.py clean
@@ -17,3 +18,6 @@ uninstall:
 
 .PHONY: debug
 debug: all
+
+install_docs:
+	cp doc/_build/html ~/GeneratedDocs/pycommon
