@@ -138,6 +138,11 @@ class Actor(object):
         Get a reference to actor named ``name``.
         """
         return self.qm.get_actor_ref(name)
+
+    def read_value(self, value_name):
+        def _f(msg):
+            setattr(self, value_name, msg[value_name])
+        return _f
     
     def receive(self, patterns, timeout=None):
         """
@@ -253,11 +258,16 @@ class Test(ProcessActor):
                 {'test': 'test',
                  'foo': 'foo',
                  'queue': 'queue',
+                 'sync': self.read_value('sync_value'),
                  'fun': lambda msg: sys.stdout.write('--> %s\n' %x),
                  'reply_me': 'reply_me',
                  '*': lambda msg: sys.stdout.write('any other stuff\n')}
                 )
             print 'After receive'
+            try:
+                print '>>>>', self.sync_value
+            except:
+                print 'sync_value not set'
             
 class SyncTest(ProcessActor):
 

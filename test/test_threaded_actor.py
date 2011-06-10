@@ -51,3 +51,15 @@ def test_timeout(qm):
             return result
     x = a('a')
     assert x.act()[-1]
+
+def test_read_value(qm):
+    class a(Actor):
+        def act(self):
+            self.receive({
+                'ack': self.read_value('foo')
+                })
+            return self.foo
+    x = a('a')
+    qm.get_actor_ref('a').send({'tag': 'ack', 'foo': 5})
+    assert x.act() == 5
+                    
