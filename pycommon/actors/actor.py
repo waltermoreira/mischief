@@ -35,7 +35,23 @@ class ConnectionManager(managers.BaseManager):
     pass
 
 class ActorManager(managers.BaseManager):
+    """
+    An actor manager handles the creation of actors and delivers
+    references on demand.
 
+    It must run before starting the actors::
+
+        m = ActorManager()
+        m.start()
+
+    For using it::
+
+        m = ActorManager()
+        m.connect()
+        foo = m.get_actor_ref('foo')
+        foo.send(msg)
+    """
+    
     def __init__(self, *args, **kwargs):
         kwargs['address'] = ('localhost', 5000)
         kwargs['authkey'] = 'actor'
@@ -56,6 +72,13 @@ class ActorManager(managers.BaseManager):
         del self.name_queues[name]
 
     def get_actor_ref(self, name):
+        """
+        Get a reference to an actor::
+
+           x = m.get_actor_ref('foo')
+           x.send(...)
+           
+        """
         return ActorRef(self.get_named(name), name)
     
 class ActorRef(object):
@@ -68,9 +91,19 @@ class ActorRef(object):
         self.name = name
 
     def send(self, msg):
+        """
+        Send a message to the actor represented by this reference.
+        """
         self.q.put(msg)
 
     def me(self):
+        """
+        Name of the actor pointed by this reference. Use it for
+        sending self references in the messages::
+
+            {'tag': 'reply_me',
+             'sender': self.me()}
+        """
         return self.name
         
 class Actor(object):
@@ -80,6 +113,11 @@ class Actor(object):
       {'tag': 'foo',
        ...}
     """
+
+    # When a timeout is given in a ``receive``, check every
+    # ``INBOX_POLLING_TIMEOUT`` seconds whether we have timed out.
+    INBOX_POLLING_TIMEOUT = 0.01
+    
     def __init__(self, name):
         self.name = name
         self.qm = ActorManager()
@@ -94,13 +132,24 @@ class Actor(object):
         self.get_inbox(to).put(msg)
 
     def get_actor_ref(self, name):
+        """
+        Get a reference to actor named ``name``.
+        """
         return self.qm.get_actor_ref(name)
     
     def receive(self, patterns, timeout=None):
         """
-        patterns have the form::
+        ``patterns`` have the form::
 
-          {a_tag: a_method, ...}
+          {a_tag: a_method_name,
+           a_tag_2: a_function,
+           ...}
+
+        Special tags are:
+
+        * ``*``: matches any tag
+        * ``timeout``: is executed when a ``receive`` times out
+        
         """
         processed = Queue.Queue()
         start_time = time.time()
@@ -111,7 +160,7 @@ class Actor(object):
                 matched = 'timeout'
                 break
             try:
-                msg = self.inbox.get(True, 0.01)
+                msg = self.inbox.get(True, self.INBOX_POLLING_TIMEOUT)
             except Queue.Empty:
                 continue
             if msg['tag'] in patterns:
@@ -134,10 +183,16 @@ class Actor(object):
         f(msg)
 
     def act(self):
-        pass
+        """
+        Subclasses must implement this method.
+        """
+        raise NotImplementedError
 
 class ThreadedActor(Actor):
-
+    """
+    A threaded version of an actor.  It runs as a daemon thread.
+    """
+    
     def __init__(self, name):
         super(ThreadedActor, self).__init__(name)
         self.thread = threading.Thread(target=self.act)
@@ -145,6 +200,9 @@ class ThreadedActor(Actor):
         self.thread.start()
 
 class ProcessActor(Actor):
+    """
+    An actor running in an independent process.
+    """
 
     def __init__(self, name):
         super(ProcessActor, self).__init__(name)
