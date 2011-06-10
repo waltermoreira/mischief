@@ -151,6 +151,7 @@ class Actor(object):
         * ``timeout``: is executed when a ``receive`` times out
         
         """
+        inbox_polling = timeout and self.INBOX_POLLING_TIMEOUT
         processed = Queue.Queue()
         start_time = time.time()
         msg = {}
@@ -160,7 +161,7 @@ class Actor(object):
                 matched = 'timeout'
                 break
             try:
-                msg = self.inbox.get(True, self.INBOX_POLLING_TIMEOUT)
+                msg = self.inbox.get(True, inbox_polling)
             except Queue.Empty:
                 continue
             if msg['tag'] in patterns:
