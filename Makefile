@@ -20,4 +20,5 @@ uninstall:
 debug: all
 
 install_docs:
-	cp doc/_build/html ~/GeneratedDocs/pycommon
+	mkdir -p ~/GeneratedDocs/pycommon
+	cp -r doc/_build/html/* ~/GeneratedDocs/pycommon
