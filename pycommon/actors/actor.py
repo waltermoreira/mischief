@@ -32,6 +32,7 @@ import sys
 import os
 import signal
 import time
+import uuid
 
 class ConnectionManager(managers.BaseManager):
     pass
@@ -120,8 +121,8 @@ class Actor(object):
     # ``INBOX_POLLING_TIMEOUT`` seconds whether we have timed out.
     INBOX_POLLING_TIMEOUT = 0.01
     
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, name=None):
+        self.name = name or str(uuid.uuid1())
         self.qm = ActorManager()
         self.qm.connect()
         self.qm.create_queue(self.name)
