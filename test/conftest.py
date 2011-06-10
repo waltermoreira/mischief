@@ -1,4 +1,4 @@
-from pycommon.actors.actor import ThreadedActor, ProcessActor, QueueManager
+from pycommon.actors.actor import ThreadedActor, ProcessActor, ActorManager
 
 def pytest_funcarg__qm(request):
     return request.cached_setup(
@@ -45,7 +45,7 @@ class _process_actor(ProcessActor):
                 'queue': 'queue'})
 
 def create_queue_manager():
-    qm = QueueManager(address=('localhost', 5000), authkey='actor')
+    qm = ActorManager(address=('localhost', 5000), authkey='actor')
     qm.start()
     t = _threaded_actor('t')
     p = _process_actor('p')

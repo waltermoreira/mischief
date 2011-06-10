@@ -9,7 +9,7 @@ An implementation of the `actor model`_.
 
 A queue manager must be created somewhere, and started::
 
-  qm = QueueManager(address=('localhost', 5000), authkey='actor')
+  qm = ActorManager(address=('localhost', 5000), authkey='actor')
   qm.start()
 
 An actor inherits from ``ThreadedActor`` or ``ProcessActor``, and it
@@ -34,10 +34,10 @@ import time
 class ConnectionManager(managers.BaseManager):
     pass
 
-class QueueManager(managers.BaseManager):
+class ActorManager(managers.BaseManager):
 
     def __init__(self, *args, **kwargs):
-        super(QueueManager, self).__init__(*args, **kwargs)
+        super(ActorManager, self).__init__(*args, **kwargs)
         self._manager = m.Manager()
         self.register('create_queue', callable=self.create_queue)
         self.register('get_named', callable=self.get_named)
@@ -62,7 +62,7 @@ class Actor(object):
     """
     def __init__(self, name):
         self.name = name
-        self.qm = QueueManager(address=('localhost', 5000), authkey='actor')
+        self.qm = ActorManager(address=('localhost', 5000), authkey='actor')
         self.qm.connect()
         self.qm.create_queue(self.name)
         self.inbox = self.qm.get_named(self.name)
