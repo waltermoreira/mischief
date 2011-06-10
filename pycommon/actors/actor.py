@@ -93,6 +93,9 @@ class Actor(object):
     def send(self, to, msg):
         self.get_inbox(to).put(msg)
 
+    def get_actor_ref(self, name):
+        return self.qm.get_actor_ref(name)
+    
     def receive(self, patterns, timeout=None):
         """
         patterns have the form::
@@ -180,8 +183,8 @@ class Test(ProcessActor):
                  'queue': 'queue',
                  'fun': lambda msg: sys.stdout.write('--> %s\n' %x),
                  'reply_me': 'reply_me',
-                 '*': lambda msg: sys.stdout.write('any other stuff\n')},
-                timeout=10)
+                 '*': lambda msg: sys.stdout.write('any other stuff\n')}
+                )
             print 'After receive'
             
 class SyncTest(ProcessActor):
