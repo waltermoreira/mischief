@@ -53,6 +53,24 @@ class ActorManager(managers.BaseManager):
     def destroy_named(self, name):
         del self.name_queues[name]
 
+    def get_actor_ref(self, name):
+        return ActorRef(self.get_named(name), name)
+    
+class ActorRef(object):
+    """
+    An actor reference.
+    """
+    
+    def __init__(self, q, name):
+        self.q = q
+        self.name = name
+
+    def send(self, msg):
+        self.q.put(msg)
+
+    def me(self):
+        return self.name
+        
 class Actor(object):
     """
     Messages to the actor have the form::
