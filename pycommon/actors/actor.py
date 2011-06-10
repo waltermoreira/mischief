@@ -127,6 +127,9 @@ class Actor(object):
         self.qm.create_queue(self.name)
         self.inbox = self.qm.get_named(self.name)
 
+    def me(self):
+        return self.name
+    
     def get_inbox(self, name):
         return self.qm.get_named(name)
 
