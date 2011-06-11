@@ -83,7 +83,13 @@ class ActorManager(managers.BaseManager):
            
         """
         return ActorRef(self.get_named(name), name)
-    
+
+    def shutdown(self):
+        print 'Finalizing'
+        for q in self.named_queues.values():
+            q.close()
+        super(ActorManager, self).shutdown()
+        
 class ActorRef(object):
     """
     An actor reference.
@@ -176,7 +182,7 @@ class Actor(object):
             except EOFError:
                 # inbox queue was closed
                 # actor exits
-                #self.qm.destroy_named(self.me())
+                self.qm.destroy_named(self.me())
                 os._exit(0)
             except Queue.Empty:
                 continue
@@ -223,28 +229,31 @@ class ProcessActor(Actor):
 
     def __init__(self, name):
         super(ProcessActor, self).__init__(name)
-        self.proc = m.Process(target=self.child)
-        self.proc.start()
-        self.proc.join()
+        parent_conn, child_conn = m.Pipe()
+        proc = m.Process(target=self.child,
+                              args=(child_conn,))
+        proc.start()
+        self.pid = parent_conn.recv()
+        proc.join()
 
-    def child(self):
+    def child(self, ch):
         p = m.Process(target=self.act)
         p.start()
+        ch.send(p.pid)
         os._exit(0)
         
     def kill(self):
         """
         Kill the process containing the actor.
         """
-        pid = self.proc.pid
-        self.proc.terminate()
+        pid = self.pid
         try:
             os.kill(pid, signal.SIGKILL)
         except OSError:
             pass
 
     def pid(self):
-        return self.proc.pid
+        return self.pid
 
 class Foo(ProcessActor):
 
