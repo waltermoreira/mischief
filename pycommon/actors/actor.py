@@ -72,7 +72,10 @@ class ActorManager(managers.BaseManager):
         return self.named_queues[name]
 
     def destroy_named(self, name):
-        del self.named_queues[name]
+        try:
+            del self.named_queues[name]
+        except KeyError:
+            pass
 
     def get_actor_ref(self, name):
         """
