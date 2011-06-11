@@ -1,9 +1,18 @@
 from pycommon.actors.actor import ThreadedActor, ProcessActor, ActorManager
+import multiprocessing
+import signal
+import os
+
+def teardown(x):
+    x.get_named('t').put({'tag': 'stop'})
+    for proc in multiprocessing.active_children():
+        os.kill(proc.pid, signal.SIGKILL)
+    x.shutdown()
 
 def pytest_funcarg__qm(request):
     return request.cached_setup(
         setup=create_queue_manager,
-        teardown=lambda x: x.get_named('t').put({'tag': 'stop'}),
+        teardown=teardown,
         scope='session')
 
 class _threaded_actor(ThreadedActor):
