@@ -216,7 +216,7 @@ class ThreadedActor(Actor):
     A threaded version of an actor.  It runs as a daemon thread.
     """
     
-    def __init__(self, name):
+    def __init__(self, name=None):
         super(ThreadedActor, self).__init__(name)
         self.thread = threading.Thread(target=self.act)
         self.thread.daemon = True
@@ -227,7 +227,7 @@ class ProcessActor(Actor):
     An actor running in an independent process.
     """
 
-    def __init__(self, name):
+    def __init__(self, name=None):
         super(ProcessActor, self).__init__(name)
         parent_conn, child_conn = m.Pipe()
         proc = m.Process(target=self.child,
