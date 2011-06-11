@@ -173,6 +173,11 @@ class Actor(object):
                 break
             try:
                 msg = self.inbox.get(True, inbox_polling)
+            except EOFError:
+                # inbox queue was closed
+                # actor exits
+                #self.qm.destroy_named(self.me())
+                os._exit(0)
             except Queue.Empty:
                 continue
             if msg['tag'] in patterns:
@@ -218,10 +223,15 @@ class ProcessActor(Actor):
 
     def __init__(self, name):
         super(ProcessActor, self).__init__(name)
-        self.proc = m.Process(target=self.act)
-        self.proc.daemon = True
+        self.proc = m.Process(target=self.child)
         self.proc.start()
+        self.proc.join()
 
+    def child(self):
+        p = m.Process(target=self.act)
+        p.start()
+        os._exit(0)
+        
     def kill(self):
         """
         Kill the process containing the actor.
@@ -235,7 +245,15 @@ class ProcessActor(Actor):
 
     def pid(self):
         return self.proc.pid
-    
+
+class Foo(ProcessActor):
+
+    def act(self):
+        t = Test('c')
+        print 'Spawned c, sleeping 0'
+        print 'slept, exiting'
+        # self.receive({'foo': lambda msg: None})
+        
 class TimeoutTest(Actor):
 
     def act(self):
