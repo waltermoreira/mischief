@@ -1,4 +1,5 @@
 from pycommon.actors.actor import Actor
+import uuid
 
 def test_reply(qm):
     class a(Actor):
@@ -62,4 +63,11 @@ def test_read_value(qm):
     x = a('a')
     qm.get_actor_ref('a').send({'tag': 'ack', 'foo': 5})
     assert x.act() == 5
-                    
+
+def test_unnamed(qm):
+    class a(Actor):
+        def act(self):
+            return self.me()
+    x = a()
+    assert x.me()[-17:] == str(uuid.uuid1())[-17:]
+        
