@@ -255,9 +255,6 @@ class ProcessActor(Actor):
         except OSError:
             pass
 
-    def pid(self):
-        return self.pid
-
 class Foo(ProcessActor):
 
     def act(self):
