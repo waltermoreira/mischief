@@ -33,6 +33,7 @@ import os
 import signal
 import time
 import uuid
+import socket
 
 class ConnectionManager(managers.BaseManager):
     pass
@@ -59,7 +60,6 @@ class ActorManager(managers.BaseManager):
         kwargs['address'] = ('localhost', 5000)
         kwargs['authkey'] = 'actor'
         super(ActorManager, self).__init__(*args, **kwargs)
-        self._manager = m.Manager()
         self.register('create_queue', callable=self.create_queue)
         self.register('get_named', callable=self.get_named)
         self.register('destroy_named', callable=self.destroy_named)
@@ -87,11 +87,16 @@ class ActorManager(managers.BaseManager):
         """
         return ActorRef(self.get_named(name), name)
 
-    def shutdown(self):
+    def start(self):
+        self._manager = m.Manager()
+        super(ActorManager, self).start()
+        
+    def stop(self):
         print 'Finalizing'
-        for q in self.named_queues.values():
-            q.close()
-        super(ActorManager, self).shutdown()
+        # for q in self.named_queues.values():
+        #     q.close()
+        self._manager.shutdown()
+        self.shutdown()
         
 class ActorRef(object):
     """
@@ -185,7 +190,6 @@ class Actor(object):
             except EOFError:
                 # inbox queue was closed
                 # actor exits
-                self.qm.destroy_named(self.me())
                 os._exit(0)
             except Queue.Empty:
                 continue
@@ -238,7 +242,7 @@ class ProcessActor(Actor):
         proc.start()
         self.pid = parent_conn.recv()
         proc.join()
-
+        
     def child(self, ch):
         p = m.Process(target=self.act)
         p.start()
