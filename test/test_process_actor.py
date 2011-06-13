@@ -48,3 +48,25 @@ def test_actor_spawns_actor(qm):
             return self.data
     x = a('a')
     assert x.act() == 3
+
+def test_timeout_zero(qm):
+    class a(Actor):
+        def act(self):
+            self.receive({
+                'foo': self.read_value('data'),
+                }, timeout=0)
+            return getattr(self, 'data', None)
+    x = a('a')
+    qm.get_actor_ref('a').send({'tag': 'foo', 'data': 1})
+    assert x.act() == 1
+
+def test_timeout_zero_no_match(qm):
+    class a(Actor):
+        def act(self):
+            self.receive({
+                'foo': self.read_value('data'),
+                }, timeout=0)
+            return getattr(self, 'data', None)
+    x = a('a')
+    qm.get_actor_ref('a').send({'tag': 'bar', 'data': 2})
+    assert x.act() == None

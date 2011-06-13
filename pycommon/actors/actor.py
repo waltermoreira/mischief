@@ -178,13 +178,13 @@ class Actor(object):
         """
         inbox_polling = timeout and self.INBOX_POLLING_TIMEOUT
         processed = Queue.Queue()
-        start_time = time.time()
+        start_time = current_time = time.time()
         msg = {}
         while True:
-            current_time = time.time()
-            if timeout is not None and current_time >= start_time + timeout:
+            if timeout is not None and current_time > start_time + timeout:
                 matched = 'timeout'
                 break
+            current_time = time.time()
             try:
                 msg = self.inbox.get(True, inbox_polling)
             except EOFError:
