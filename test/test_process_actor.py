@@ -70,3 +70,19 @@ def test_timeout_zero_no_match(qm):
     x = a('a')
     qm.get_actor_ref('a').send({'tag': 'bar', 'data': 2})
     assert x.act() == None
+
+def test_timeout_eating_msgs(qm):
+    result = [True]
+    class a(Actor):
+        def act(self):
+            self.receive({}, timeout=0.1)
+        def act2(self):
+            self.receive({'bar': lambda msg: None,
+                          'timeout': lambda msg: result.append(False)},
+                         timeout=0.1)
+    x = a('a')
+    qm.get_actor_ref('a').send({'tag': 'bar'})
+    x.act()
+    x.act2()
+    assert result[-1]
+

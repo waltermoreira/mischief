@@ -200,6 +200,8 @@ class Actor(object):
                 matched = '*'
                 break
             processed.put(msg)
+        while not processed.empty():
+            self.inbox.put(processed.get())
         try:
             action = patterns[matched]
         except KeyError:
@@ -208,8 +210,6 @@ class Actor(object):
             f = getattr(self, action)
         elif callable(action):
             f = action
-        while not processed.empty():
-            self.inbox.put(processed.get())
         f(msg)
 
     def act(self):
