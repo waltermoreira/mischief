@@ -1,0 +1,198 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pycommon.actors.actor – Actor library &mdash; PyCommon v0.1 documentation</title>
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="PyCommon v0.1 documentation" href="index.html" />
+    <link rel="prev" title="Welcome to PyCommon’s documentation!" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to PyCommon’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">PyCommon v0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body">
+            
+  <span class="target" id="module-pycommon.actors.actor"></span><div class="section" id="module-actor">
+<span id="pycommon-actors-actor-actor-library"></span><h1><a class="reference internal" href="#module-pycommon.actors.actor" title="pycommon.actors.actor"><tt class="xref py py-mod docutils literal"><span class="pre">pycommon.actors.actor</span></tt></a> &#8211; Actor library<a class="headerlink" href="#module-actor" title="Permalink to this headline">¶</a></h1>
+<p>An implementation of the <a class="reference external" href="http://en.wikipedia.org/wiki/Actor_model">actor model</a>.</p>
+<p>A queue manager must be created somewhere, and started:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">qm</span> <span class="o">=</span> <span class="n">ActorManager</span><span class="p">(</span><span class="n">address</span><span class="o">=</span><span class="p">(</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">5000</span><span class="p">),</span> <span class="n">authkey</span><span class="o">=</span><span class="s">&#39;actor&#39;</span><span class="p">)</span>
+<span class="n">qm</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>An actor inherits from <tt class="docutils literal"><span class="pre">ThreadedActor</span></tt> or <tt class="docutils literal"><span class="pre">ProcessActor</span></tt>, and it
+implements the method <tt class="docutils literal"><span class="pre">act()</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">MyActor</span><span class="p">(</span><span class="n">ThreadedActor</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">receive</span><span class="p">({</span>
+            <span class="s">&#39;foo&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">msg</span><span class="p">:</span> <span class="bp">None</span>
+            <span class="p">})</span>
+</pre></div>
+</div>
+<dl class="class">
+<dt id="pycommon.actors.actor.Actor">
+<em class="property">class </em><tt class="descclassname">pycommon.actors.actor.</tt><tt class="descname">Actor</tt><big>(</big><em>name</em><big>)</big><a class="reference internal" href="_modules/pycommon/actors/actor.html#Actor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycommon.actors.actor.Actor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Messages to the actor have the form:</p>
+<div class="highlight-python"><pre>{'tag': 'foo',
+ ...}</pre>
+</div>
+<dl class="method">
+<dt id="pycommon.actors.actor.Actor.act">
+<tt class="descname">act</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pycommon/actors/actor.html#Actor.act"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycommon.actors.actor.Actor.act" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses must implement this method.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycommon.actors.actor.Actor.get_actor_ref">
+<tt class="descname">get_actor_ref</tt><big>(</big><em>name</em><big>)</big><a class="reference internal" href="_modules/pycommon/actors/actor.html#Actor.get_actor_ref"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycommon.actors.actor.Actor.get_actor_ref" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a reference to actor named <tt class="docutils literal"><span class="pre">name</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycommon.actors.actor.Actor.receive">
+<tt class="descname">receive</tt><big>(</big><em>patterns</em>, <em>timeout=None</em><big>)</big><a class="reference internal" href="_modules/pycommon/actors/actor.html#Actor.receive"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycommon.actors.actor.Actor.receive" title="Permalink to this definition">¶</a></dt>
+<dd><p><tt class="docutils literal"><span class="pre">patterns</span></tt> have the form:</p>
+<div class="highlight-python"><pre>{a_tag: a_method_name,
+ a_tag_2: a_function,
+ ...}</pre>
+</div>
+<p>Special tags are:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">*</span></tt>: matches any tag</li>
+<li><tt class="docutils literal"><span class="pre">timeout</span></tt>: is executed when a <tt class="docutils literal"><span class="pre">receive</span></tt> times out</li>
+</ul>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pycommon.actors.actor.ActorManager">
+<em class="property">class </em><tt class="descclassname">pycommon.actors.actor.</tt><tt class="descname">ActorManager</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/pycommon/actors/actor.html#ActorManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycommon.actors.actor.ActorManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="http://docs.python.org/library/multiprocessing.html#multiprocessing.managers.BaseManager" title="(in Python v2.7)"><tt class="xref py py-class docutils literal"><span class="pre">multiprocessing.managers.BaseManager</span></tt></a></p>
+<p>An actor manager handles the creation of actors and delivers
+references on demand.</p>
+<p>It must run before starting the actors:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">m</span> <span class="o">=</span> <span class="n">ActorManager</span><span class="p">()</span>
+<span class="n">m</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>For using it:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">m</span> <span class="o">=</span> <span class="n">ActorManager</span><span class="p">()</span>
+<span class="n">m</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+<span class="n">foo</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">get_actor_ref</span><span class="p">(</span><span class="s">&#39;foo&#39;</span><span class="p">)</span>
+<span class="n">foo</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="pycommon.actors.actor.ActorManager.get_actor_ref">
+<tt class="descname">get_actor_ref</tt><big>(</big><em>name</em><big>)</big><a class="reference internal" href="_modules/pycommon/actors/actor.html#ActorManager.get_actor_ref"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycommon.actors.actor.ActorManager.get_actor_ref" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a reference to an actor:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">x</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">get_actor_ref</span><span class="p">(</span><span class="s">&#39;foo&#39;</span><span class="p">)</span>
+<span class="n">x</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pycommon.actors.actor.ActorRef">
+<em class="property">class </em><tt class="descclassname">pycommon.actors.actor.</tt><tt class="descname">ActorRef</tt><big>(</big><em>q</em>, <em>name</em><big>)</big><a class="reference internal" href="_modules/pycommon/actors/actor.html#ActorRef"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycommon.actors.actor.ActorRef" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>An actor reference.</p>
+<dl class="method">
+<dt id="pycommon.actors.actor.ActorRef.me">
+<tt class="descname">me</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pycommon/actors/actor.html#ActorRef.me"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycommon.actors.actor.ActorRef.me" title="Permalink to this definition">¶</a></dt>
+<dd><p>Name of the actor pointed by this reference. Use it for
+sending self references in the messages:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">{</span><span class="s">&#39;tag&#39;</span><span class="p">:</span> <span class="s">&#39;reply_me&#39;</span><span class="p">,</span>
+ <span class="s">&#39;sender&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">me</span><span class="p">()}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="pycommon.actors.actor.ActorRef.send">
+<tt class="descname">send</tt><big>(</big><em>msg</em><big>)</big><a class="reference internal" href="_modules/pycommon/actors/actor.html#ActorRef.send"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycommon.actors.actor.ActorRef.send" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send a message to the actor represented by this reference.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pycommon.actors.actor.ProcessActor">
+<em class="property">class </em><tt class="descclassname">pycommon.actors.actor.</tt><tt class="descname">ProcessActor</tt><big>(</big><em>name</em><big>)</big><a class="reference internal" href="_modules/pycommon/actors/actor.html#ProcessActor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycommon.actors.actor.ProcessActor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pycommon.actors.actor.Actor" title="pycommon.actors.actor.Actor"><tt class="xref py py-class docutils literal"><span class="pre">pycommon.actors.actor.Actor</span></tt></a></p>
+<p>An actor running in an independent process.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="pycommon.actors.actor.ThreadedActor">
+<em class="property">class </em><tt class="descclassname">pycommon.actors.actor.</tt><tt class="descname">ThreadedActor</tt><big>(</big><em>name</em><big>)</big><a class="reference internal" href="_modules/pycommon/actors/actor.html#ThreadedActor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pycommon.actors.actor.ThreadedActor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pycommon.actors.actor.Actor" title="pycommon.actors.actor.Actor"><tt class="xref py py-class docutils literal"><span class="pre">pycommon.actors.actor.Actor</span></tt></a></p>
+<p>A threaded version of an actor.  It runs as a daemon thread.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to PyCommon’s documentation!"
+             >previous</a> |</li>
+        <li><a href="index.html">PyCommon v0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Walter Moreira.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.3.
+    </div>
+  </body>
+</html>

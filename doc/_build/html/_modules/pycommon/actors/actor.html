@@ -1,0 +1,338 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pycommon.actors.actor &mdash; PyCommon v0.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="PyCommon v0.1 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">PyCommon v0.1 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body">
+            
+  <h1>Source code for pycommon.actors.actor</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">:mod:`pycommon.actors.actor` -- Actor library</span>
+<span class="sd">=============================================</span>
+
+<span class="sd">.. module:: actor</span>
+<span class="sd">.. moduleauthor:: Walter Moreira &lt;moreira@astro.as.utexas.edu&gt;</span>
+
+<span class="sd">An implementation of the `actor model`_.</span>
+
+<span class="sd">A queue manager must be created somewhere, and started::</span>
+
+<span class="sd">  qm = ActorManager(address=(&#39;localhost&#39;, 5000), authkey=&#39;actor&#39;)</span>
+<span class="sd">  qm.start()</span>
+
+<span class="sd">An actor inherits from ``ThreadedActor`` or ``ProcessActor``, and it</span>
+<span class="sd">implements the method ``act()``::</span>
+
+<span class="sd">  class MyActor(ThreadedActor):</span>
+<span class="sd">      def act(self):</span>
+<span class="sd">          self.receive({</span>
+<span class="sd">              &#39;foo&#39;: lambda msg: None</span>
+<span class="sd">              })</span>
+
+<span class="sd">.. _actor model: http://en.wikipedia.org/wiki/Actor_model</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">multiprocessing</span> <span class="kn">as</span> <span class="nn">m</span>
+<span class="kn">import</span> <span class="nn">multiprocessing.managers</span> <span class="kn">as</span> <span class="nn">managers</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">Queue</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="k">class</span> <span class="nc">ConnectionManager</span><span class="p">(</span><span class="n">managers</span><span class="o">.</span><span class="n">BaseManager</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<div class="viewcode-block" id="ActorManager"><a class="viewcode-back" href="../../../actor.html#pycommon.actors.actor.ActorManager">[docs]</a><span class="k">class</span> <span class="nc">ActorManager</span><span class="p">(</span><span class="n">managers</span><span class="o">.</span><span class="n">BaseManager</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An actor manager handles the creation of actors and delivers</span>
+<span class="sd">    references on demand.</span>
+
+<span class="sd">    It must run before starting the actors::</span>
+
+<span class="sd">        m = ActorManager()</span>
+<span class="sd">        m.start()</span>
+
+<span class="sd">    For using it::</span>
+
+<span class="sd">        m = ActorManager()</span>
+<span class="sd">        m.connect()</span>
+<span class="sd">        foo = m.get_actor_ref(&#39;foo&#39;)</span>
+<span class="sd">        foo.send(msg)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s">&#39;address&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">5000</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s">&#39;authkey&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;actor&#39;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ActorManager</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_manager</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">Manager</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s">&#39;create_queue&#39;</span><span class="p">,</span> <span class="nb">callable</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">create_queue</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s">&#39;get_named&#39;</span><span class="p">,</span> <span class="nb">callable</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_named</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s">&#39;destroy_named&#39;</span><span class="p">,</span> <span class="nb">callable</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">destroy_named</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">named_queues</span> <span class="o">=</span> <span class="p">{}</span>
+        
+    <span class="k">def</span> <span class="nf">create_queue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">named_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_manager</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get_named</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">named_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">destroy_named</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_queues</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+<div class="viewcode-block" id="ActorManager.get_actor_ref"><a class="viewcode-back" href="../../../actor.html#pycommon.actors.actor.ActorManager.get_actor_ref">[docs]</a>    <span class="k">def</span> <span class="nf">get_actor_ref</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get a reference to an actor::</span>
+
+<span class="sd">           x = m.get_actor_ref(&#39;foo&#39;)</span>
+<span class="sd">           x.send(...)</span>
+<span class="sd">           </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">ActorRef</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_named</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">name</span><span class="p">)</span>
+    </div></div>
+<div class="viewcode-block" id="ActorRef"><a class="viewcode-back" href="../../../actor.html#pycommon.actors.actor.ActorRef">[docs]</a><span class="k">class</span> <span class="nc">ActorRef</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An actor reference.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q</span> <span class="o">=</span> <span class="n">q</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+<div class="viewcode-block" id="ActorRef.send"><a class="viewcode-back" href="../../../actor.html#pycommon.actors.actor.ActorRef.send">[docs]</a>    <span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send a message to the actor represented by this reference.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ActorRef.me"><a class="viewcode-back" href="../../../actor.html#pycommon.actors.actor.ActorRef.me">[docs]</a>    <span class="k">def</span> <span class="nf">me</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Name of the actor pointed by this reference. Use it for</span>
+<span class="sd">        sending self references in the messages::</span>
+
+<span class="sd">            {&#39;tag&#39;: &#39;reply_me&#39;,</span>
+<span class="sd">             &#39;sender&#39;: self.me()}</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        </div></div>
+<div class="viewcode-block" id="Actor"><a class="viewcode-back" href="../../../actor.html#pycommon.actors.actor.Actor">[docs]</a><span class="k">class</span> <span class="nc">Actor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Messages to the actor have the form::</span>
+
+<span class="sd">      {&#39;tag&#39;: &#39;foo&#39;,</span>
+<span class="sd">       ...}</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c"># When a timeout is given in a ``receive``, check every</span>
+    <span class="c"># ``INBOX_POLLING_TIMEOUT`` seconds whether we have timed out.</span>
+    <span class="n">INBOX_POLLING_TIMEOUT</span> <span class="o">=</span> <span class="mf">0.01</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qm</span> <span class="o">=</span> <span class="n">ActorManager</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qm</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qm</span><span class="o">.</span><span class="n">create_queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qm</span><span class="o">.</span><span class="n">get_named</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_inbox</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">qm</span><span class="o">.</span><span class="n">get_named</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">to</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_inbox</span><span class="p">(</span><span class="n">to</span><span class="p">)</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Actor.get_actor_ref"><a class="viewcode-back" href="../../../actor.html#pycommon.actors.actor.Actor.get_actor_ref">[docs]</a>    <span class="k">def</span> <span class="nf">get_actor_ref</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get a reference to actor named ``name``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">qm</span><span class="o">.</span><span class="n">get_actor_ref</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    </div>
+<div class="viewcode-block" id="Actor.receive"><a class="viewcode-back" href="../../../actor.html#pycommon.actors.actor.Actor.receive">[docs]</a>    <span class="k">def</span> <span class="nf">receive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">patterns</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        ``patterns`` have the form::</span>
+
+<span class="sd">          {a_tag: a_method_name,</span>
+<span class="sd">           a_tag_2: a_function,</span>
+<span class="sd">           ...}</span>
+
+<span class="sd">        Special tags are:</span>
+
+<span class="sd">        * ``*``: matches any tag</span>
+<span class="sd">        * ``timeout``: is executed when a ``receive`` times out</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">inbox_polling</span> <span class="o">=</span> <span class="n">timeout</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">INBOX_POLLING_TIMEOUT</span>
+        <span class="n">processed</span> <span class="o">=</span> <span class="n">Queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">current_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">current_time</span> <span class="o">&gt;=</span> <span class="n">start_time</span> <span class="o">+</span> <span class="n">timeout</span><span class="p">:</span>
+                <span class="n">matched</span> <span class="o">=</span> <span class="s">&#39;timeout&#39;</span>
+                <span class="k">break</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inbox</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">inbox_polling</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">Queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">msg</span><span class="p">[</span><span class="s">&#39;tag&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">patterns</span><span class="p">:</span>
+                <span class="n">matched</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s">&#39;tag&#39;</span><span class="p">]</span>
+                <span class="k">break</span>
+            <span class="k">if</span> <span class="s">&#39;*&#39;</span> <span class="ow">in</span> <span class="n">patterns</span><span class="p">:</span>
+                <span class="n">matched</span> <span class="o">=</span> <span class="s">&#39;*&#39;</span>
+                <span class="k">break</span>
+            <span class="n">processed</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">patterns</span><span class="p">[</span><span class="n">matched</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">callable</span><span class="p">(</span><span class="n">action</span><span class="p">):</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">action</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">processed</span><span class="o">.</span><span class="n">empty</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inbox</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">processed</span><span class="o">.</span><span class="n">get</span><span class="p">())</span>
+        <span class="n">f</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Actor.act"><a class="viewcode-back" href="../../../actor.html#pycommon.actors.actor.Actor.act">[docs]</a>    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Subclasses must implement this method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</div></div>
+<div class="viewcode-block" id="ThreadedActor"><a class="viewcode-back" href="../../../actor.html#pycommon.actors.actor.ThreadedActor">[docs]</a><span class="k">class</span> <span class="nc">ThreadedActor</span><span class="p">(</span><span class="n">Actor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A threaded version of an actor.  It runs as a daemon thread.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ThreadedActor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">act</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="ProcessActor"><a class="viewcode-back" href="../../../actor.html#pycommon.actors.actor.ProcessActor">[docs]</a><span class="k">class</span> <span class="nc">ProcessActor</span><span class="p">(</span><span class="n">Actor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An actor running in an independent process.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ProcessActor</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">proc</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">act</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">proc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</div>
+<span class="k">class</span> <span class="nc">TimeoutTest</span><span class="p">(</span><span class="n">Actor</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">receive</span><span class="p">({</span><span class="s">&#39;test&#39;</span><span class="p">:</span> <span class="s">&#39;test&#39;</span><span class="p">},</span>
+                     <span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        
+<span class="k">class</span> <span class="nc">Test</span><span class="p">(</span><span class="n">ProcessActor</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&#39;tag: test&#39;</span><span class="p">,</span> <span class="n">msg</span>
+        
+    <span class="k">def</span> <span class="nf">foo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&#39;tag: foo&#39;</span><span class="p">,</span> <span class="n">msg</span>
+
+    <span class="k">def</span> <span class="nf">queue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&#39;msgs in queue:&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">inbox</span><span class="o">.</span><span class="n">qsize</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">reply_me</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="n">sender</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s">&#39;reply_to&#39;</span><span class="p">]</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_inbox</span><span class="p">(</span><span class="n">sender</span><span class="p">)</span>
+        <span class="n">q</span><span class="o">.</span><span class="n">put</span><span class="p">({</span><span class="s">&#39;tag&#39;</span><span class="p">:</span> <span class="s">&#39;ack&#39;</span><span class="p">,</span> <span class="s">&#39;answer&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">})</span>
+        
+    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="mi">3</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">receive</span><span class="p">(</span>
+                <span class="p">{</span><span class="s">&#39;test&#39;</span><span class="p">:</span> <span class="s">&#39;test&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;foo&#39;</span><span class="p">:</span> <span class="s">&#39;foo&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;queue&#39;</span><span class="p">:</span> <span class="s">&#39;queue&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;fun&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">msg</span><span class="p">:</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;--&gt; </span><span class="si">%s</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">%</span><span class="n">x</span><span class="p">),</span>
+                 <span class="s">&#39;reply_me&#39;</span><span class="p">:</span> <span class="s">&#39;reply_me&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;*&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">msg</span><span class="p">:</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;any other stuff</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)}</span>
+                <span class="p">)</span>
+            <span class="k">print</span> <span class="s">&#39;After receive&#39;</span>
+            
+<span class="k">class</span> <span class="nc">SyncTest</span><span class="p">(</span><span class="n">ProcessActor</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">act</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_inbox</span><span class="p">(</span><span class="s">&#39;t&#39;</span><span class="p">)</span>
+        <span class="n">q</span><span class="o">.</span><span class="n">put</span><span class="p">({</span><span class="s">&#39;tag&#39;</span><span class="p">:</span> <span class="s">&#39;reply_me&#39;</span><span class="p">,</span> <span class="s">&#39;reply_to&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">})</span>
+        <span class="k">print</span> <span class="s">&#39;Sent &quot;reply_me&quot;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">receive</span><span class="p">(</span>
+            <span class="p">{</span><span class="s">&#39;ack&#39;</span><span class="p">:</span> <span class="s">&#39;answer&#39;</span><span class="p">})</span>
+
+    <span class="k">def</span> <span class="nf">answer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&#39;Got answer&#39;</span><span class="p">,</span> <span class="n">msg</span><span class="p">[</span><span class="s">&#39;answer&#39;</span><span class="p">]</span>
+        <span class="k">print</span> <span class="s">&#39;And now will wait for a message &quot;foo&quot;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">receive</span><span class="p">(</span>
+            <span class="p">{</span><span class="s">&#39;foo&#39;</span><span class="p">:</span> <span class="s">&#39;done&#39;</span><span class="p">})</span>
+
+    <span class="k">def</span> <span class="nf">done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&quot;ok, I&#39;m done&quot;</span>
+        
+</pre></div>
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">PyCommon v0.1 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Walter Moreira.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.3.
+    </div>
+  </body>
+</html>
