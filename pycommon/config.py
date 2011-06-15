@@ -89,7 +89,8 @@ def use_local_config(filename):
         filename += '.py'
     try:
         caller = inspect.stack()[1][0]
-        execfile(filename, caller.f_globals, caller.f_locals)
+        abs_filename = join(dirname(abspath(caller.f_globals['__file__'])), filename)
+        execfile(abs_filename, caller.f_globals, caller.f_locals)
     except IOError:
         print 'Local config "%s" not found. Ignoring it.' %filename
     finally:
