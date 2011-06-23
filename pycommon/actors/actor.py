@@ -199,6 +199,7 @@ class Actor(object):
         start_time = current_time = time.time()
         msg = {}
         self.actor_logger.debug('Starting receive with timeout = %s' %inbox_polling)
+        self.actor_logger.debug(' Will listen to: %s' %(patterns.keys(),))
         while True:
             if timeout is not None and current_time > start_time + timeout:
                 matched = 'timeout'
