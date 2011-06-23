@@ -27,6 +27,8 @@ implements the method ``act()``::
 import multiprocessing as m
 import multiprocessing.managers as managers
 import threading
+import logging
+import logging.handlers
 import Queue
 import sys
 import os
@@ -34,6 +36,8 @@ import signal
 import time
 import uuid
 import socket
+
+file_logger = logging.getLogger('file')
 
 class ConnectionManager(managers.BaseManager):
     pass
@@ -141,7 +145,21 @@ class Actor(object):
         self.qm.connect()
         self.qm.create_queue(self.name)
         self.inbox = self.qm.get_named(self.name)
-
+        file_logger.debug('Actor "%s" created' %self.name)
+        self.actor_logger = logging.getLogger('actor-%s' %self.name)
+        handler = logging.handlers.RotatingFileHandler(
+            os.path.join(os.environ['HET2_DEPLOY'],
+                         'log/gui',
+                         'actor-%s.log' %self.name))
+        formatter = logging.Formatter(
+            "%(asctime)s %(levelname)-8s "
+            "[%(filename)30s:%(lineno)-4s] "
+            "- %(message)s")
+        handler.setFormatter(formatter)
+        self.actor_logger.addHandler(handler)
+        self.actor_logger.setLevel(logging.DEBUG)
+        self.actor_logger.debug('---- Created ----')
+        
     def me(self):
         return self.name
     
@@ -180,37 +198,52 @@ class Actor(object):
         processed = Queue.Queue()
         start_time = current_time = time.time()
         msg = {}
+        self.actor_logger.debug('Starting receive with timeout = %s' %inbox_polling)
         while True:
             if timeout is not None and current_time > start_time + timeout:
                 matched = 'timeout'
+                self.actor_logger.debug('Matched timeout')
                 break
             current_time = time.time()
             try:
                 msg = self.inbox.get(True, inbox_polling)
+                self.actor_logger.debug('Got message: %s' %msg)
             except EOFError:
                 # inbox queue was closed
                 # actor exits
+                self.actor_logger.debug('Got EOFError, quitting')
                 os._exit(0)
             except Queue.Empty:
+                self.actor_logger.debug('Queue is empty, polling again')
                 continue
             if msg['tag'] in patterns:
+                self.actor_logger.debug('Matched %s' %msg['tag'])
                 matched = msg['tag']
                 break
             if '*' in patterns:
+                self.actor_logger.debug('Matched *')
                 matched = '*'
                 break
+            self.actor_logger.debug('Nothing matched, saving msg "%s" to internal queue' %msg['tag'])
             processed.put(msg)
+        self.actor_logger.debug('We matched: %s. Restoring internal queue to inbox (%s items)' %(matched, processed.qsize()))
         while not processed.empty():
-            self.inbox.put(processed.get())
+            x = processed.get()
+            self.inbox.put(x)
+            self.actor_logger.debug(' Restored: %s' %x['tag'])
         try:
             action = patterns[matched]
+            self.actor_logger.debug('Found action')
         except KeyError:
+            self.actor_logger.debug('No action found, just finishing receive')
             return
         if isinstance(action, str):
             f = getattr(self, action)
         elif callable(action):
             f = action
+        self.actor_logger.debug('About to execute action %s' %f.func_name)
         f(msg)
+        self.actor_logger.debug('Finished executing action %s' %f.func_name)
 
     def act(self):
         """
@@ -241,6 +274,7 @@ class ProcessActor(Actor):
                               args=(child_conn,))
         proc.start()
         self.pid = parent_conn.recv()
+        self.actor_logger.debug('Started actor with pid: %s' %self.pid)
         proc.join()
         
     def child(self, ch):
@@ -298,9 +332,9 @@ class Test(ProcessActor):
                  'queue': 'queue',
                  'sync': self.read_value('sync_value'),
                  'fun': lambda msg: sys.stdout.write('--> %s\n' %x),
-                 'reply_me': 'reply_me',
-                 '*': lambda msg: sys.stdout.write('any other stuff\n')}
-                )
+                 'reply_me': 'reply_me'})
+                #  '*': lambda msg: sys.stdout.write('any other stuff\n')}
+                # )
             print 'After receive'
             try:
                 print '>>>>', self.sync_value
