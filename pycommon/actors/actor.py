@@ -140,7 +140,7 @@ class Actor(object):
     INBOX_POLLING_TIMEOUT = 0.01
     
     def __init__(self, name=None):
-        self.name = name or str(uuid.uuid1())
+        self.name = name or 'actor_'+str(uuid.uuid1().hex)
         self.qm = ActorManager()
         self.qm.connect()
         self.qm.create_queue(self.name)

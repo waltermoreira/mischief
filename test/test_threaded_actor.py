@@ -69,5 +69,5 @@ def test_unnamed(qm):
         def act(self):
             return self.me()
     x = a()
-    assert x.me()[-17:] == str(uuid.uuid1())[-17:]
+    assert x.me()[-17:] == str(uuid.uuid1().hex)[-17:]
         
