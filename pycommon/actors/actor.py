@@ -298,6 +298,25 @@ class ProcessActor(Actor):
         except OSError:
             pass
 
+class FastActor(Actor):
+
+    def __init__(self):
+        super(FastActor, self).__init__()
+        self.external = self.inbox
+        self.inbox = Queue.Queue()
+        self.t = threading.Thread(target=self.copy_to_internal)
+        self.t.daemon = True
+        self.t.start()
+
+    def copy_to_internal(self):
+        try:
+            while True:
+                self.inbox.put(self.external.get())
+        except EOFError:
+            # when actor dies, queue will get eof
+            # just leave
+            pass
+        
 class Foo(ProcessActor):
 
     def act(self):
