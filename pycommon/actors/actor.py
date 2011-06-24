@@ -194,6 +194,10 @@ class Actor(object):
         * ``timeout``: is executed when a ``receive`` times out
         
         """
+        if timeout == 0 and self.inbox.qsize() == 0:
+            # optimization: this is the usual case when called from
+            # C++
+            return
         inbox_polling = timeout and self.INBOX_POLLING_TIMEOUT
         processed = Queue.Queue()
         start_time = current_time = time.time()
