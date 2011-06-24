@@ -61,7 +61,7 @@ class ActorManager(managers.BaseManager):
     """
     
     def __init__(self, *args, **kwargs):
-        kwargs['address'] = ('localhost', 5000)
+        kwargs['address'] = ('localhost', 5123)
         kwargs['authkey'] = 'actor'
         super(ActorManager, self).__init__(*args, **kwargs)
         self.register('create_queue', callable=self.create_queue)
