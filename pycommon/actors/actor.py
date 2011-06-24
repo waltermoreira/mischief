@@ -157,7 +157,7 @@ class Actor(object):
             "- %(message)s")
         handler.setFormatter(formatter)
         self.actor_logger.addHandler(handler)
-        self.actor_logger.setLevel(logging.DEBUG)
+        self.actor_logger.setLevel(logging.ERROR)
         self.actor_logger.debug('---- Created ----')
         
     def me(self):
