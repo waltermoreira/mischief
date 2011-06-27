@@ -38,6 +38,12 @@ import uuid
 import socket
 
 file_logger = logging.getLogger('file')
+actor_logger = logging.getLogger('actor')
+handler = logging.handlers.RotatingFileHandler(os.path.join(os.environ['HET2_DEPLOY'], 'log/gui', 'actor.log'))
+formatter = logging.Formatter("%(asctime)s %(levelname)-8s [%(filename)30s:%(lineno)-4s] - %(message)s")
+handler.setFormatter(formatter)
+actor_logger.addHandler(handler)
+actor_logger.setLevel(logging.DEBUG)
 
 class ConnectionManager(managers.BaseManager):
     pass
@@ -68,17 +74,25 @@ class ActorManager(managers.BaseManager):
         self.register('get_named', callable=self.get_named)
         self.register('destroy_named', callable=self.destroy_named)
         self.named_queues = {}
+        actor_logger.debug('[ActorManager] Created')
         
     def create_queue(self, name):
-        self.named_queues[name] = self._manager.Queue()
+        actor_logger.debug('[ActorManager] create queue %s' %name)
+        actor_logger.debug('[ActorManager]   len(named_queues) = %d' %len(self.named_queues))
+        self.named_queues[name] = Queue.Queue()
 
     def get_named(self, name):
+        actor_logger.debug('[ActorManager] get named %s' %name)
         return self.named_queues[name]
 
     def destroy_named(self, name):
+        actor_logger.debug('[ActorManager] destroy %s' %name)
         try:
+            actor_logger.debug('[ActorManager] Before: len named_queues = %s' %len(self.named_queues))
             del self.named_queues[name]
+            actor_logger.debug('[ActorManager] After: len named_queues = %s' %len(self.named_queues))
         except KeyError:
+            actor_logger.debug('[ActorManager] KeyError')
             pass
 
     def get_actor_ref(self, name):
@@ -89,17 +103,18 @@ class ActorManager(managers.BaseManager):
            x.send(...)
            
         """
+        actor_logger.debug('[ActorManager] asked for new reference for %s' %name)
         return ActorRef(self.get_named(name), name)
 
     def start(self):
-        self._manager = m.Manager()
         super(ActorManager, self).start()
+        actor_logger.debug('[ActorManager] Started')
         
     def stop(self):
+        actor_logger.debug('[ActorManager] Stopped')
         print 'Finalizing'
         # for q in self.named_queues.values():
         #     q.close()
-        self._manager.shutdown()
         self.shutdown()
         
 class ActorRef(object):
@@ -110,11 +125,13 @@ class ActorRef(object):
     def __init__(self, q, name):
         self.q = q
         self.name = name
-
+        actor_logger.debug("[ref-%s] I'm a new reference for actor %s" %(self.name[:30], name))
+        
     def send(self, msg):
         """
         Send a message to the actor represented by this reference.
         """
+        actor_logger.debug('[ref-%s] Sent message: %s' %(self.name[:30], msg))
         self.q.put(msg)
 
     def me(self):
@@ -139,26 +156,17 @@ class Actor(object):
     # ``INBOX_POLLING_TIMEOUT`` seconds whether we have timed out.
     INBOX_POLLING_TIMEOUT = 0.01
     
-    def __init__(self, name=None):
-        self.name = name or 'actor_'+str(uuid.uuid1().hex)
+    def __init__(self, name=None, prefix=''):
+        self.name = name or ('actor_' + prefix + '_' +
+                             str(uuid.uuid1().hex))
         self.qm = ActorManager()
         self.qm.connect()
         self.qm.create_queue(self.name)
         self.inbox = self.qm.get_named(self.name)
-        file_logger.debug('Actor "%s" created' %self.name)
-        self.actor_logger = logging.getLogger('actor-%s' %self.name)
-        handler = logging.handlers.RotatingFileHandler(
-            os.path.join(os.environ['HET2_DEPLOY'],
-                         'log/gui',
-                         'actor-%s.log' %self.name))
-        formatter = logging.Formatter(
-            "%(asctime)s %(levelname)-8s "
-            "[%(filename)30s:%(lineno)-4s] "
-            "- %(message)s")
-        handler.setFormatter(formatter)
-        self.actor_logger.addHandler(handler)
-        self.actor_logger.setLevel(logging.ERROR)
-        self.actor_logger.debug('---- Created ----')
+        actor_logger.debug('[%s] Actor created' %self.name)
+
+    def __del__(self):
+        self.qm.destroy_named(self.name)
         
     def me(self):
         return self.name
@@ -167,6 +175,8 @@ class Actor(object):
         return self.qm.get_named(name)
 
     def send(self, to, msg):
+        actor_logger.debug('[%s] Actor sent to %s the message: %s' %(self.name[:30],
+                                                                     to, msg))
         self.get_inbox(to).put(msg)
 
     def get_actor_ref(self, name):
@@ -202,53 +212,54 @@ class Actor(object):
         processed = Queue.Queue()
         start_time = current_time = time.time()
         msg = {}
-        self.actor_logger.debug('Starting receive with timeout = %s' %inbox_polling)
-        self.actor_logger.debug(' Will listen to: %s' %(patterns.keys(),))
+        actor_logger.debug('[%s] Starting receive with timeout = %s' %(self.name[:30],
+                                                                       inbox_polling))
+        actor_logger.debug('[%s]   Will listen to: %s' %(self.name[:30], patterns.keys()))
         while True:
             if timeout is not None and current_time > start_time + timeout:
                 matched = 'timeout'
-                self.actor_logger.debug('Matched timeout')
+                actor_logger.debug('[%s]   Matched timeout' %self.name[:30])
                 break
             current_time = time.time()
             try:
                 msg = self.inbox.get(True, inbox_polling)
-                self.actor_logger.debug('Got message: %s' %msg)
+                actor_logger.debug('[%s]   Got message: %s' %(self.name[:30], msg))
             except EOFError:
                 # inbox queue was closed
                 # actor exits
-                self.actor_logger.debug('Got EOFError, quitting')
+                actor_logger.debug('[%s]   Got EOFError, quitting' %self.name[:30])
                 os._exit(0)
             except Queue.Empty:
-                self.actor_logger.debug('Queue is empty, polling again')
+                actor_logger.debug('[%s]   Queue is empty, polling again' %self.name[:30])
                 continue
             if msg['tag'] in patterns:
-                self.actor_logger.debug('Matched %s' %msg['tag'])
+                actor_logger.debug('[%s]   Matched %s' %(self.name[:30], msg['tag']))
                 matched = msg['tag']
                 break
             if '*' in patterns:
-                self.actor_logger.debug('Matched *')
+                actor_logger.debug('[%s]   Matched *' %self.name[:30])
                 matched = '*'
                 break
-            self.actor_logger.debug('Nothing matched, saving msg "%s" to internal queue' %msg['tag'])
+            actor_logger.debug('[%s]   Nothing matched, saving msg "%s" to internal queue' %(self.name[:30], msg['tag']))
             processed.put(msg)
-        self.actor_logger.debug('We matched: %s. Restoring internal queue to inbox (%s items)' %(matched, processed.qsize()))
+        actor_logger.debug('[%s] We matched: %s. Restoring internal queue to inbox (%s items)' %(self.name[:30], matched, processed.qsize()))
         while not processed.empty():
             x = processed.get()
             self.inbox.put(x)
-            self.actor_logger.debug(' Restored: %s' %x['tag'])
+            actor_logger.debug('[%s]   Restored: %s' %(self.name[:30], x['tag']))
         try:
             action = patterns[matched]
-            self.actor_logger.debug('Found action')
+            actor_logger.debug('[%s]   Found action' %self.name[:30])
         except KeyError:
-            self.actor_logger.debug('No action found, just finishing receive')
+            actor_logger.debug('[%s] No action found, just finishing receive' %self.name[:30])
             return
         if isinstance(action, str):
             f = getattr(self, action)
         elif callable(action):
             f = action
-        self.actor_logger.debug('About to execute action %s' %f.func_name)
+        actor_logger.debug('[%s] About to execute action %s' %(self.name[:30], f.func_name))
         f(msg)
-        self.actor_logger.debug('Finished executing action %s' %f.func_name)
+        actor_logger.debug('[%s] Finished executing action %s' %(self.name[:30], f.func_name))
 
     def act(self):
         """
@@ -261,8 +272,9 @@ class ThreadedActor(Actor):
     A threaded version of an actor.  It runs as a daemon thread.
     """
     
-    def __init__(self, name=None):
-        super(ThreadedActor, self).__init__(name)
+    def __init__(self, name=None, prefix=''):
+        super(ThreadedActor, self).__init__(name=name,
+                                            prefix=prefix)
         self.thread = threading.Thread(target=self.act)
         self.thread.daemon = True
         self.thread.start()
@@ -272,22 +284,43 @@ class ProcessActor(Actor):
     An actor running in an independent process.
     """
 
-    def __init__(self, name=None):
-        super(ProcessActor, self).__init__(name)
+    def __init__(self, name=None, prefix=''):
+        super(ProcessActor, self).__init__(name=name,
+                                           prefix=prefix)
+        actor_logger.debug('[%s] I am pid: %s' %(self.name[:30], m.current_process().pid))
         parent_conn, child_conn = m.Pipe()
-        proc = m.Process(target=self.child,
+        self.proc = m.Process(target=self.child,
                               args=(child_conn,))
-        proc.start()
+        actor_logger.debug('[%s] Starting self detaching process' %self.name[:30])
+        self.proc.start()
+        actor_logger.debug('[%s] Waiting for pid' %self.name[:30])
         self.pid = parent_conn.recv()
-        self.actor_logger.debug('Started actor with pid: %s' %self.pid)
-        proc.join()
+        actor_logger.debug('[%s] Got pid: %s' %(self.name[:30], self.pid))
+        # self.proc.join()
+        # actor_logger.debug('[%s] Joined detacher, we are leaving' %self.name[:30])
         
     def child(self, ch):
-        p = m.Process(target=self.act)
-        p.start()
-        ch.send(p.pid)
+        actor_logger.debug('[%s] Detacher is starting child that "acts"' %self.name[:30])
+        actor_logger.debug('[%s] I am detacher pid: %s' %(self.name[:30], m.current_process().pid))
+        self.p = m.Process(target=self.clean_act)
+        self.p.start()
+        ch.send(self.p.pid)
+        actor_logger.debug('[%s] Child that "acts" started' %self.name[:30])
+        actor_logger.debug('[%s]   Sent back to parent pid = %d' %(self.name[:30], self.p.pid))
+        actor_logger.debug('[%s]   Exiting' %self.name[:30])
         os._exit(0)
-        
+
+    def clean_act(self):
+        try:
+            actor_logger.debug('[%s] Starting clean act' %self.name[:30])
+            actor_logger.debug('[%s] I am the actor pid: %s' %(self.name[:30], m.current_process().pid))
+            self.act()
+            actor_logger.debug('[%s] Finishing clean act' %self.name[:30])
+        finally:
+            actor_logger.debug('[%s] Destroying queue in manager' %self.name[:30])
+            self.qm.destroy_named(self.name)
+            actor_logger.debug('[%s] Leaving clean_act' %self.name[:30])
+            
     def kill(self):
         """
         Kill the process containing the actor.
@@ -300,13 +333,15 @@ class ProcessActor(Actor):
 
 class FastActor(Actor):
 
-    def __init__(self):
-        super(FastActor, self).__init__()
+    def __init__(self, prefix=''):
+        super(FastActor, self).__init__(prefix=prefix)
+        actor_logger.debug('[%s] Fast actor created' %self.name[:30])
         self.external = self.inbox
         self.inbox = Queue.Queue()
         self.t = threading.Thread(target=self.copy_to_internal)
         self.t.daemon = True
         self.t.start()
+        actor_logger.debug('[%s]   Helper thread for ast actor started' %self.name[:30])
 
     def copy_to_internal(self):
         try:
