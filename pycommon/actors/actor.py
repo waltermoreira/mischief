@@ -37,6 +37,9 @@ import time
 import uuid
 import socket
 
+# multiproc_logger = m.log_to_stderr()
+# multiproc_logger.setLevel(m.SUBDEBUG)
+
 file_logger = logging.getLogger('file')
 actor_logger = logging.getLogger('actor')
 handler = logging.handlers.RotatingFileHandler(os.path.join(os.environ['HET2_DEPLOY'], 'log/gui', 'actor.log'))
@@ -74,8 +77,8 @@ class ActorManager(managers.BaseManager):
         self.register('get_named', callable=self.get_named)
         self.register('destroy_named', callable=self.destroy_named)
         self.named_queues = {}
-        actor_logger.debug('[ActorManager] Created')
-        
+        actor_logger.debug('[ActorManager] Created with pid: %s' %m.current_process().pid)
+
     def create_queue(self, name):
         actor_logger.debug('[ActorManager] create queue %s' %name)
         actor_logger.debug('[ActorManager]   len(named_queues) = %d' %len(self.named_queues))
@@ -289,6 +292,8 @@ class ProcessActor(Actor):
                                            prefix=prefix)
         actor_logger.debug('[%s] I am pid: %s' %(self.name[:30], m.current_process().pid))
         parent_conn, child_conn = m.Pipe()
+        actor_logger.debug('[%s] Connections: %s, %s' %(self.name[:30],
+                                                        parent_conn, child_conn))
         self.proc = m.Process(target=self.child,
                               args=(child_conn,))
         actor_logger.debug('[%s] Starting self detaching process' %self.name[:30])
@@ -351,14 +356,6 @@ class FastActor(Actor):
             # when actor dies, queue will get eof
             # just leave
             pass
-        
-class Foo(ProcessActor):
-
-    def act(self):
-        t = Test('c')
-        print 'Spawned c, sleeping 0'
-        print 'slept, exiting'
-        # self.receive({'foo': lambda msg: None})
         
 class TimeoutTest(Actor):
 
