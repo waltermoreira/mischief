@@ -168,9 +168,6 @@ class Actor(object):
         self.inbox = self.qm.get_named(self.name)
         actor_logger.debug('[%s] Actor created' %self.name)
 
-    def __del__(self):
-        self.qm.destroy_named(self.name)
-        
     def me(self):
         return self.name
     
