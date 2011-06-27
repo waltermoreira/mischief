@@ -301,6 +301,7 @@ class ProcessActor(Actor):
         actor_logger.debug('[%s] Waiting for pid' %self.name[:30])
         self.pid = parent_conn.recv()
         actor_logger.debug('[%s] Got pid: %s' %(self.name[:30], self.pid))
+        child_conn.close()
         # self.proc.join()
         # actor_logger.debug('[%s] Joined detacher, we are leaving' %self.name[:30])
         
