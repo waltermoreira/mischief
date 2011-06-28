@@ -163,7 +163,10 @@ class Actor(object):
         self.inbox = self.qm.get_named(self.name)
 
     def __del__(self):
-        self.qm.destroy_named(self.name)
+        try:
+            self.qm.destroy_named(self.name)
+        except Exception as exc:
+            pass
         
     def me(self):
         return self.name
