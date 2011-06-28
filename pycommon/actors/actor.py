@@ -107,8 +107,14 @@ class ActorManager(managers.BaseManager):
         return ActorRef(self.get_named(name), name)
 
     def start(self):
-        super(ActorManager, self).start()
-        actor_logger.debug('[ActorManager] Started')
+        try:
+            socket.create_connection(('localhost', 5123))
+            # manager already started, just connect to it
+            self.connect()
+        except socket.error:
+            # start a manager
+            super(ActorManager, self).start()
+            actor_logger.debug('[ActorManager] Started')
         
     def stop(self):
         actor_logger.debug('[ActorManager] Stopped')
