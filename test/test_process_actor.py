@@ -28,26 +28,26 @@ def test_inbox(qm):
             'reply_to': 'a'})
     assert x.act() == 2
 
-def test_actor_spawns_actor(qm):
-    class a(Actor):
-        def act(self):
-            qm.get_actor_ref('p').send({
-                'tag': 'spawn',
-                'reply_to': self.me()
-                })
-            self.receive({
-                'reply': lambda msg: None
-                })
-            qm.get_actor_ref('child').send({
-                'tag': 'foo',
-                'reply_to': self.me()
-                })
-            self.receive({
-                'reply': self.read_value('data')
-                })
-            return self.data
-    x = a('a')
-    assert x.act() == 3
+# def test_actor_spawns_actor(qm):
+#     class a(Actor):
+#         def act(self):
+#             qm.get_actor_ref('p').send({
+#                 'tag': 'spawn',
+#                 'reply_to': self.me()
+#                 })
+#             self.receive({
+#                 'reply': lambda msg: None
+#                 })
+#             qm.get_actor_ref('child').send({
+#                 'tag': 'foo',
+#                 'reply_to': self.me()
+#                 })
+#             self.receive({
+#                 'reply': self.read_value('data')
+#                 })
+#             return self.data
+#     x = a('a')
+#     assert x.act() == 3
 
 def test_timeout_zero(qm):
     class a(Actor):
