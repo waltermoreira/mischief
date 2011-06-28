@@ -88,7 +88,10 @@ class ActorManager(managers.BaseManager):
         self.named_queues[name] = Queue.Queue()
 
     def get_named(self, name):
-        return self.named_queues[name]
+        try:
+            return self.named_queues[name]
+        except KeyError:
+            return None
 
     def destroy_named(self, name):
         actor_logger.debug('[ActorManager] <destroy> queue %s' %name)
@@ -107,7 +110,10 @@ class ActorManager(managers.BaseManager):
            x.send(...)
            
         """
-        return ActorRef(self.get_named(name), name)
+        queue = self.get_named(name)
+        if str(queue) == 'None':
+            return None
+        return ActorRef(queue, name)
 
     def start(self):
         try:
