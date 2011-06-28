@@ -68,9 +68,12 @@ class ActorManager(managers.BaseManager):
         foo = m.get_actor_ref('foo')
         foo.send(msg)
     """
+
+    IP = 'localhost'
+    PORT = 5123
     
     def __init__(self, *args, **kwargs):
-        kwargs['address'] = ('localhost', 5123)
+        kwargs['address'] = (self.IP, self.PORT)
         kwargs['authkey'] = 'actor'
         super(ActorManager, self).__init__(*args, **kwargs)
         self.register('create_queue', callable=self.create_queue)
@@ -108,7 +111,7 @@ class ActorManager(managers.BaseManager):
 
     def start(self):
         try:
-            socket.create_connection(('localhost', 5123))
+            socket.create_connection((self.IP, self.PORT))
             # manager already started, just connect to it
             self.connect()
         except socket.error:
