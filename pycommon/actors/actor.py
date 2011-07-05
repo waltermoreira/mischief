@@ -85,7 +85,7 @@ class ActorManager(managers.BaseManager):
     def create_queue(self, name):
         actor_logger.debug('[ActorManager] <create> queue %s' %name)
         actor_logger.debug('[ActorManager]   len(named_queues) = %d' %len(self.named_queues))
-        self.named_queues[name] = Queue.Queue()
+        self.named_queues[name] = m.Queue()
 
     def get_named(self, name):
         try:
@@ -97,6 +97,9 @@ class ActorManager(managers.BaseManager):
         actor_logger.debug('[ActorManager] <destroy> queue %s' %name)
         try:
             actor_logger.debug('[ActorManager] Before: len named_queues = %s' %len(self.named_queues))
+            q = self.named_queues[name]
+            q.close()
+            q.cancel_join_thread()
             del self.named_queues[name]
             actor_logger.debug('[ActorManager] After: len named_queues = %s' %len(self.named_queues))
         except KeyError:
