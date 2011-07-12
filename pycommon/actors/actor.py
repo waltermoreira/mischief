@@ -179,7 +179,34 @@ class Actor(object):
         self.qm.connect()
         self.qm.create_queue(self.name)
         self.inbox = self.qm.get_named(self.name)
+        
+    def refresh_inbox(self):
+        """
+        Create a new inbox for the actor, closing the previous one so
+        clients can be informed.
 
+        Use only with clients that are able to know that the inbox
+        they are sending messages to changed (i.e. those who wait for
+        responses).
+        """
+        try:
+            # Try to destroy the old inbox to force disconnecting
+            # clients
+            self.qm.destroy_named(self.name)
+        except:
+            pass
+        try:
+            # this magic is necessary because Python's multiprocessing
+            # module caches the connection
+            del managers.BaseProxy._address_to_local[
+                (ActorManager.IP, ActorManager.PORT)][0].connection
+        except KeyError:
+            pass
+        self.qm = ActorManager()
+        self.qm.start()
+        self.qm.create_queue(self.name)
+        self.inbox = self.qm.get_named(self.name)
+        
     def __del__(self):
         try:
             self.qm.destroy_named(self.name)
