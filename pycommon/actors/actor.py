@@ -80,7 +80,7 @@ class ActorManager(managers.BaseManager):
         self.register('get_named', callable=self.get_named)
         self.register('destroy_named', callable=self.destroy_named)
         self.named_queues = {}
-        actor_logger.debug('[ActorManager] Created with pid: %s' %m.current_process().pid)
+        actor_logger.debug('[ActorManager] Created in pid: %s' %m.current_process().pid)
 
     def create_queue(self, name):
         actor_logger.debug('[ActorManager] <create> queue %s' %name)
@@ -103,6 +103,7 @@ class ActorManager(managers.BaseManager):
             del self.named_queues[name]
             actor_logger.debug('[ActorManager] After: len named_queues = %s' %len(self.named_queues))
         except KeyError:
+            actor_logger.debug('[ActorManager]  already destroyed')
             pass
 
     def get_actor_ref(self, name):
@@ -123,6 +124,7 @@ class ActorManager(managers.BaseManager):
             socket.create_connection((self.IP, self.PORT))
             # manager already started, just connect to it
             self.connect()
+            actor_logger.debug('[ActorManager] already started')
         except socket.error:
             # start a manager
             super(ActorManager, self).start()
@@ -175,10 +177,17 @@ class Actor(object):
     def __init__(self, name=None, prefix=''):
         self.name = name or ('actor_' + prefix + '_' +
                              str(uuid.uuid1().hex))
+        actor_logger.debug('[Actor %s] connecting to manager' %(self.name,))
         self.qm = ActorManager()
         self.qm.connect()
+        actor_logger.debug('[Actor %s] creating my inbox' %(self.name,))
         self.qm.create_queue(self.name)
+        actor_logger.debug('[Actor %s] getting the created inbox' %(self.name,))
         self.inbox = self.qm.get_named(self.name)
+        if self.name == 'hardware':
+            self.my_log = lambda *args, **kwargs: None
+        else:
+            self.my_log = actor_logger.debug
         
     def refresh_inbox(self):
         """
@@ -255,18 +264,22 @@ class Actor(object):
         processed = Queue.Queue()
         start_time = current_time = time.time()
         msg = {}
+        self.my_log('[Actor %s] starting receive'%(self.name,))
         while True:
             if timeout is not None and current_time > start_time + timeout:
                 matched = 'timeout'
                 break
             current_time = time.time()
             try:
+                self.my_log('[Actor %s] checking inbox with timeout: %s'%(self.name, inbox_polling))
                 msg = self.inbox.get(True, inbox_polling)
+                self.my_log('[Actor %s] got object: %s' %(self.name, msg))
             except EOFError:
                 # inbox queue was closed
                 # actor exits
                 os._exit(0)
             except Queue.Empty:
+                self.my_log('[Actor %s] empty inbox' %(self.name,))
                 continue
             if msg['tag'] in patterns:
                 matched = msg['tag']
