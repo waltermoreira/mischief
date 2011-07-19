@@ -273,6 +273,8 @@ class Actor(object):
             try:
                 self.my_log('[Actor %s] checking inbox with timeout: %s'%(self.name, inbox_polling))
                 msg = self.inbox.get(True, inbox_polling)
+                if type(msg) != dict:
+                    actor_logger.debug('[Actor %s] got msg: %s' %(self.name, msg))
                 self.my_log('[Actor %s] got object: %s' %(self.name, msg))
             except EOFError:
                 # inbox queue was closed
@@ -280,6 +282,8 @@ class Actor(object):
                 os._exit(0)
             except Queue.Empty:
                 self.my_log('[Actor %s] empty inbox' %(self.name,))
+                continue
+            if msg is None:
                 continue
             if msg['tag'] in patterns:
                 matched = msg['tag']
