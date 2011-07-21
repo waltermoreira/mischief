@@ -9,6 +9,7 @@ class Manager(object):
     def __init__(self, address=('localhost', 5123)):
         self.server = StreamServer(address, self.handle_request)
         self.queues = {}
+        self.conns = 0
         
     def start(self):
         server_proc = multiprocessing.Process(target=self.server.serve_forever)
@@ -18,6 +19,7 @@ class Manager(object):
 
     def handle_request(self, sock, address):
         print 'handling request'
+        self.conns += 1
         stream = sock.makefile('w', bufsize=0)
         while True:
             obj = json.loads(stream.readline())
@@ -32,6 +34,7 @@ class Manager(object):
                 stream.write(json.dumps(res) + '\n')
             elif cmd == 'quit':
                 print 'leaving request handler'
+                self.conns -= 1
                 return
             elif cmd == 'del':
                 print 'destroying queue'
@@ -50,7 +53,11 @@ class Manager(object):
     def put(self, name, obj):
         q = self.queues.setdefault(name, Queue())
         q.put(obj)
-    
+
+    def stats(self):
+        print 'num queues', len(self.queues)
+        print 'num connections', self.conns
+        
 class QueueRef(object):
 
     def __init__(self, name):
