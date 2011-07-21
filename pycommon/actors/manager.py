@@ -39,6 +39,8 @@ class Manager(object):
             elif cmd == 'del':
                 print 'destroying queue'
                 del self.queues[obj['name']]
+            elif cmd == 'stats':
+                self.stats()
             else:
                 stream.write(json.dumps({'status': False}) + '\n')
             
@@ -90,3 +92,5 @@ class QueueRef(object):
                                     'name': self.name}) + '\n')
         self.destroy_ref()
         
+    def stats(self):
+        self.sock.write(json.dumps({'cmd': 'stats'}) + '\n')
