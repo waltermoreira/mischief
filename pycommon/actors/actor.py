@@ -25,7 +25,7 @@ implements the method ``act()``::
 """
 
 import multiprocessing as m
-import multiprocessing.managers as managers
+import manager
 import threading
 import logging
 import logging.handlers
@@ -48,103 +48,15 @@ handler.setFormatter(formatter)
 actor_logger.addHandler(handler)
 actor_logger.setLevel(logging.DEBUG)
 
-class ConnectionManager(managers.BaseManager):
-    pass
-
-class ActorManager(managers.BaseManager):
-    """
-    An actor manager handles the creation of actors and delivers
-    references on demand.
-
-    It must run before starting the actors::
-
-        m = ActorManager()
-        m.start()
-
-    For using it::
-
-        m = ActorManager()
-        m.connect()
-        foo = m.get_actor_ref('foo')
-        foo.send(msg)
-    """
-
-    IP = 'localhost'
-    PORT = 5123
-    
-    def __init__(self, *args, **kwargs):
-        kwargs['address'] = (self.IP, self.PORT)
-        kwargs['authkey'] = 'actor'
-        super(ActorManager, self).__init__(*args, **kwargs)
-        self.register('create_queue', callable=self.create_queue)
-        self.register('get_named', callable=self.get_named)
-        self.register('destroy_named', callable=self.destroy_named)
-        self.named_queues = {}
-        actor_logger.debug('[ActorManager] Created in pid: %s' %m.current_process().pid)
-
-    def create_queue(self, name):
-        actor_logger.debug('[ActorManager] <create> queue %s' %name)
-        actor_logger.debug('[ActorManager]   len(named_queues) = %d' %len(self.named_queues))
-        self.named_queues[name] = m.Queue()
-
-    def get_named(self, name):
-        try:
-            return self.named_queues[name]
-        except KeyError:
-            return None
-
-    def destroy_named(self, name):
-        actor_logger.debug('[ActorManager] <destroy> queue %s' %name)
-        try:
-            actor_logger.debug('[ActorManager] Before: len named_queues = %s' %len(self.named_queues))
-            q = self.named_queues[name]
-            q.close()
-            q.cancel_join_thread()
-            del self.named_queues[name]
-            actor_logger.debug('[ActorManager] After: len named_queues = %s' %len(self.named_queues))
-        except KeyError:
-            actor_logger.debug('[ActorManager]  already destroyed')
-            pass
-
-    def get_actor_ref(self, name):
-        """
-        Get a reference to an actor::
-
-           x = m.get_actor_ref('foo')
-           x.send(...)
-           
-        """
-        queue = self.get_named(name)
-        if str(queue) == 'None':
-            return None
-        return ActorRef(queue, name)
-
-    def start(self):
-        try:
-            socket.create_connection((self.IP, self.PORT))
-            # manager already started, just connect to it
-            self.connect()
-            actor_logger.debug('[ActorManager] already started')
-        except socket.error:
-            # start a manager
-            super(ActorManager, self).start()
-            actor_logger.debug('[ActorManager] Started')
-        
-    def stop(self):
-        actor_logger.debug('[ActorManager] Stopped')
-        print 'Finalizing'
-        # for q in self.named_queues.values():
-        #     q.close()
-        self.shutdown()
         
 class ActorRef(object):
     """
     An actor reference.
     """
     
-    def __init__(self, q, name):
-        self.q = q
+    def __init__(self, name):
         self.name = name
+        self.q = m.QueueRef(name)
         
     def send(self, msg):
         """
@@ -177,66 +89,17 @@ class Actor(object):
     def __init__(self, name=None, prefix=''):
         self.name = name or ('actor_' + prefix + '_' +
                              str(uuid.uuid1().hex))
-        actor_logger.debug('[Actor %s] connecting to manager' %(self.name,))
-        self.qm = ActorManager()
-        self.qm.connect()
         actor_logger.debug('[Actor %s] creating my inbox' %(self.name,))
-        self.qm.create_queue(self.name)
+        self.inbox = manager.QueueRef(self.name)
         actor_logger.debug('[Actor %s] getting the created inbox' %(self.name,))
-        self.inbox = self.qm.get_named(self.name)
         if self.name == 'hardware':
             self.my_log = lambda *args, **kwargs: None
         else:
             self.my_log = actor_logger.debug
         
-    def refresh_inbox(self):
-        """
-        Create a new inbox for the actor, closing the previous one so
-        clients can be informed.
-
-        Use only with clients that are able to know that the inbox
-        they are sending messages to changed (i.e. those who wait for
-        responses).
-        """
-        try:
-            # Try to destroy the old inbox to force disconnecting
-            # clients
-            self.qm.destroy_named(self.name)
-        except:
-            pass
-        try:
-            # this magic is necessary because Python's multiprocessing
-            # module caches the connection
-            del managers.BaseProxy._address_to_local[
-                (ActorManager.IP, ActorManager.PORT)][0].connection
-        except KeyError:
-            pass
-        self.qm = ActorManager()
-        self.qm.start()
-        self.qm.create_queue(self.name)
-        self.inbox = self.qm.get_named(self.name)
-        
-    def __del__(self):
-        try:
-            self.qm.destroy_named(self.name)
-        except Exception as exc:
-            pass
-        
     def me(self):
         return self.name
     
-    def get_inbox(self, name):
-        return self.qm.get_named(name)
-
-    def send(self, to, msg):
-        self.get_inbox(to).put(msg)
-
-    def get_actor_ref(self, name):
-        """
-        Get a reference to actor named ``name``.
-        """
-        return self.qm.get_actor_ref(name)
-
     def read_value(self, value_name):
         def _f(msg):
             setattr(self, value_name, msg[value_name])
@@ -272,18 +135,12 @@ class Actor(object):
             current_time = time.time()
             try:
                 self.my_log('[Actor %s] checking inbox with timeout: %s'%(self.name, inbox_polling))
-                msg = self.inbox.get(True, inbox_polling)
+                msg = self.inbox.get(timeout=inbox_polling)
                 if type(msg) != dict:
                     actor_logger.debug('[Actor %s] got msg: %s' %(self.name, msg))
                 self.my_log('[Actor %s] got object: %s' %(self.name, msg))
-            except EOFError:
-                # inbox queue was closed
-                # actor exits
-                os._exit(0)
             except Queue.Empty:
                 self.my_log('[Actor %s] empty inbox' %(self.name,))
-                continue
-            if msg is None:
                 continue
             if msg['tag'] in patterns:
                 matched = msg['tag']
