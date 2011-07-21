@@ -3,6 +3,7 @@ from gevent.server import StreamServer
 from gevent.queue import Queue, Empty
 import multiprocessing
 import json
+import socket as py_socket
 
 IP = 'localhost'
 PORT = 5123
@@ -86,7 +87,7 @@ class QueueRef(object):
 
     def __init__(self, name, address=(IP, PORT)):
         self.name = name
-        s = socket.create_connection(address)
+        s = py_socket.create_connection(address)
         self.sock = s.makefile('w', bufsize=0)
         self.sock.write(json.dumps({'cmd': 'touch',
                                     'name': self.name}) + '\n')
