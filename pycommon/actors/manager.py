@@ -43,6 +43,8 @@ class Manager(object):
             elif cmd == 'del':
                 print 'destroying queue'
                 del self.queues[obj['name']]
+            elif cmd == 'touch':
+                self.touch(obj['name'])
             elif cmd == 'stats':
                 self.stats()
             else:
@@ -63,8 +65,11 @@ class Manager(object):
                     'type': 'not_found',
                     'msg': "queue '%s' not found" %name}
 
+    def touch(self, name):
+        self.queues.setdefault(name, Queue())
+        
     def put(self, name, obj):
-        q = self.queues.setdefault(name, Queue())
+        q = self.queues[name]
         q.put(obj)
 
     def stats(self):
@@ -80,6 +85,8 @@ class QueueRef(object):
         self.name = name
         s = socket.create_connection(address)
         self.sock = s.makefile('w', bufsize=0)
+        self.sock.write(json.dumps({'cmd': 'touch',
+                                    'name': self.name}) + '\n')
         
     def put(self, obj):
         self.sock.write(json.dumps({'cmd': 'put',
