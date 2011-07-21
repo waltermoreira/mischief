@@ -21,14 +21,21 @@ class Manager(object):
         stream = sock.makefile('w', bufsize=0)
         while True:
             obj = json.loads(stream.readline())
-            if obj['cmd'] == 'put':
+            cmd = obj['cmd']
+            if cmd == 'put':
                 print 'got put', obj['name'], obj['arg']
                 self.put(obj['name'], obj['arg'])
-            elif obj['cmd'] == 'get':
+            elif cmd == 'get':
                 print 'got get', obj['name']
                 res = self.get(obj['name'])
                 print 'will return', res
                 stream.write(json.dumps(res) + '\n')
+            elif cmd == 'quit':
+                print 'leaving request handler'
+                return
+            elif cmd == 'del':
+                print 'destroying queue'
+                del self.queues[obj['name']]
             else:
                 stream.write(json.dumps({'status': False}) + '\n')
             
@@ -67,3 +74,12 @@ class QueueRef(object):
         self.sock.flush()
         return ret
     
+    def destroy_ref(self):
+        self.sock.write(json.dumps({'cmd': 'quit'}) + '\n')
+        self.sock.close()
+
+    def destroy_queue(self):
+        self.sock.write(json.dumps({'cmd': 'del',
+                                    'name': self.name}) + '\n')
+        self.destroy_ref()
+        
