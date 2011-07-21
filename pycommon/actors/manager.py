@@ -6,7 +6,7 @@ import json
 
 class Manager(object):
 
-    def __init__(self, address):
+    def __init__(self, address=('localhost', 5123)):
         self.server = StreamServer(address, self.handle_request)
         self.queues = {}
         
@@ -18,18 +18,19 @@ class Manager(object):
 
     def handle_request(self, sock, address):
         print 'handling request'
-        stream = sock.makefile('w')
-        obj = json.loads(stream.readline())
-        if obj['cmd'] == 'put':
-            print 'got put', obj['name'], obj['arg']
-            self.put(obj['name'], obj['arg'])
-        elif obj['cmd'] == 'get':
-            print 'got get', obj['name']
-            res = self.get(obj['name'])
-            print 'will return', res
-            stream.write(json.dumps(res) + '\n')
-        else:
-            stream.write(json.dumps({'status': False}) + '\n')
+        stream = sock.makefile('w', bufsize=0)
+        while True:
+            obj = json.loads(stream.readline())
+            if obj['cmd'] == 'put':
+                print 'got put', obj['name'], obj['arg']
+                self.put(obj['name'], obj['arg'])
+            elif obj['cmd'] == 'get':
+                print 'got get', obj['name']
+                res = self.get(obj['name'])
+                print 'will return', res
+                stream.write(json.dumps(res) + '\n')
+            else:
+                stream.write(json.dumps({'status': False}) + '\n')
             
     def get(self, name):
         try:
@@ -47,22 +48,22 @@ class QueueRef(object):
 
     def __init__(self, name):
         self.name = name
-
-    def put(self, obj):
         s = socket.create_connection(('localhost', 5123))
-        f = s.makefile('w')
-        f.write(json.dumps({'cmd': 'put',
-                            'name': self.name,
-                            'arg': obj}) + '\n')
-        f.close()
+        self.sock = s.makefile('w', bufsize=0)
+        
+    def put(self, obj):
+        self.sock.write(json.dumps({'cmd': 'put',
+                                    'name': self.name,
+                                    'arg': obj}) + '\n')
+        self.sock.flush()
 
     def get(self):
-        s = socket.create_connection(('localhost', 5123))
-        f = s.makefile('w')
-        f.write(json.dumps({'cmd': 'get',
-                            'name': self.name}) + '\n')
-        f.flush()
-        ret = json.loads(f.readline())
-        f.close()
+        self.sock.write(json.dumps({'cmd': 'get',
+                                    'name': self.name}) + '\n')
+        self.sock.flush()
+        print 'ref will read from server'
+        ret = json.loads(self.sock.readline())
+        print 'read', ret
+        self.sock.flush()
         return ret
     
