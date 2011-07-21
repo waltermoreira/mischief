@@ -56,7 +56,7 @@ class ActorRef(object):
     
     def __init__(self, name):
         self.name = name
-        self.q = m.QueueRef(name)
+        self.q = manager.QueueRef(name)
         
     def send(self, msg):
         """
