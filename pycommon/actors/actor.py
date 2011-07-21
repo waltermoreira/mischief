@@ -75,6 +75,15 @@ class ActorRef(object):
              'sender': self.me()}
         """
         return self.name
+
+    def destroy_ref(self):
+        self.q.destroy_ref()
+
+    def destroy_actor(self):
+        self.q.destroy_queue()
+
+    def __del__(self):
+        self.destroy_ref()
         
 class Actor(object):
     """
@@ -98,10 +107,16 @@ class Actor(object):
             self.my_log = lambda *args, **kwargs: None
         else:
             self.my_log = actor_logger.debug
+
+    def __del__(self):
+        self.destroy_actor()
         
     def me(self):
         return self.name
-    
+
+    def destroy_actor(self):
+        self.inbox.destroy_actor()
+        
     def read_value(self, value_name):
         def _f(msg):
             setattr(self, value_name, msg[value_name])
