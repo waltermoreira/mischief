@@ -4,9 +4,12 @@ from gevent.queue import Queue, Empty
 import multiprocessing
 import json
 
+IP = 'localhost'
+PORT = 5123
+
 class Manager(object):
 
-    def __init__(self, address=('localhost', 5123)):
+    def __init__(self, address=(IP, PORT)):
         self.server = StreamServer(address, self.handle_request)
         self.queues = {}
         self.conns = 0
@@ -73,9 +76,9 @@ class QueueError(Exception):
 
 class QueueRef(object):
 
-    def __init__(self, name):
+    def __init__(self, name, address=(IP, PORT)):
         self.name = name
-        s = socket.create_connection(('localhost', 5123))
+        s = socket.create_connection(address)
         self.sock = s.makefile('w', bufsize=0)
         
     def put(self, obj):
