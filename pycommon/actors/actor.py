@@ -29,8 +29,6 @@ import manager
 import threading
 import logging
 import logging.handlers
-import gevent
-import gevent.queue
 import Queue
 import sys
 import os
@@ -218,8 +216,10 @@ class FastActor(Actor):
         super(FastActor, self).__init__(name=name, prefix=prefix)
         actor_logger.debug('[%s] Fast actor created' %self.name[:30])
         self.external = self.inbox
-        self.inbox = gevent.queue.Queue()
-        gevent.spawn(self.copy_to_internal)
+        self.inbox = Queue.Queue()
+        self.t = threading.Thread(target=self.copy_to_internal)
+        self.t.daemon = True
+        self.t.start()
 
     def copy_to_internal(self):
         try:
