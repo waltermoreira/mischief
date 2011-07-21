@@ -111,8 +111,7 @@ class Actor(object):
 
     def __del__(self):
         try:
-            pass
-            #self.destroy_actor()
+            self.destroy_actor()
         except:
             pass
         
