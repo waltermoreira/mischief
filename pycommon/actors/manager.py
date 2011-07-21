@@ -21,27 +21,30 @@ class Manager(object):
         return server_proc
 
     def handle_request(self, sock, address):
-        print 'handling request'
         self.conns += 1
         stream = sock.makefile('w', bufsize=0)
         while True:
-            obj = json.loads(stream.readline())
+            try:
+                obj = json.loads(stream.readline())
+            except ValueError as exc:
+                try:
+                    stream.write(json.dumps({'status': False,
+                                             'type': 'not_a_json',
+                                             'msg': exc.message}) + '\n')
+                except:
+                    pass
+                return
             cmd = obj['cmd']
             if cmd == 'put':
-                print 'got put', obj['name'], obj['arg']
                 self.put(obj['name'], obj['arg'])
             elif cmd == 'get':
-                print 'got get', obj['name']
                 timeout = obj.get('timeout', None)
                 res = self.get(obj['name'], timeout=timeout)
-                print 'will return', res
                 stream.write(json.dumps(res) + '\n')
             elif cmd == 'quit':
-                print 'leaving request handler'
                 self.conns -= 1
                 return
             elif cmd == 'del':
-                print 'destroying queue'
                 del self.queues[obj['name']]
             elif cmd == 'touch':
                 self.touch(obj['name'])
@@ -97,9 +100,7 @@ class QueueRef(object):
         self.sock.write(json.dumps({'cmd': 'get',
                                     'timeout': timeout,
                                     'name': self.name}) + '\n')
-        print 'ref will read from server'
         ret = json.loads(self.sock.readline())
-        print 'read', ret
         if ret['status']:
             return ret['result']
         if ret['type'] == 'empty':
