@@ -114,6 +114,14 @@ class Actor(object):
     def me(self):
         return self.name
 
+    def send(self, msg):
+        """
+        Send to myself
+        """
+        q = ActorRef(self.name)
+        q.send(msg)
+        q.destroy_ref()
+        
     def destroy_actor(self):
         self.inbox.destroy_queue()
         
