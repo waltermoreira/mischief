@@ -115,7 +115,7 @@ class Actor(object):
         return self.name
 
     def destroy_actor(self):
-        self.inbox.destroy_actor()
+        self.inbox.destroy_queue()
         
     def read_value(self, value_name):
         def _f(msg):
