@@ -24,36 +24,38 @@ class Manager(object):
     def handle_request(self, sock, address):
         self.conns += 1
         stream = sock.makefile('w', bufsize=0)
-        while True:
-            try:
-                obj = json.loads(stream.readline())
-            except ValueError as exc:
+        try:
+            while True:
                 try:
+                    obj = json.loads(stream.readline())
+                except ValueError as exc:
+                    try:
+                        stream.write(json.dumps({'status': False,
+                                                 'type': 'not_a_json',
+                                                 'msg': exc.message}) + '\n')
+                    except:
+                        pass
+                    return
+                cmd = obj['cmd']
+                if cmd == 'put':
+                    self.put(obj['name'], obj['arg'])
+                elif cmd == 'get':
+                    timeout = obj.get('timeout', None)
+                    res = self.get(obj['name'], timeout=timeout)
+                    stream.write(json.dumps(res) + '\n')
+                elif cmd == 'quit':
+                    return
+                elif cmd == 'del':
+                    del self.queues[obj['name']]
+                elif cmd == 'touch':
+                    self.touch(obj['name'])
+                elif cmd == 'stats':
+                    self.stats()
+                else:
                     stream.write(json.dumps({'status': False,
-                                             'type': 'not_a_json',
-                                             'msg': exc.message}) + '\n')
-                except:
-                    pass
-                return
-            cmd = obj['cmd']
-            if cmd == 'put':
-                self.put(obj['name'], obj['arg'])
-            elif cmd == 'get':
-                timeout = obj.get('timeout', None)
-                res = self.get(obj['name'], timeout=timeout)
-                stream.write(json.dumps(res) + '\n')
-            elif cmd == 'quit':
-                self.conns -= 1
-                return
-            elif cmd == 'del':
-                del self.queues[obj['name']]
-            elif cmd == 'touch':
-                self.touch(obj['name'])
-            elif cmd == 'stats':
-                self.stats()
-            else:
-                stream.write(json.dumps({'status': False,
-                                         'type': 'unknown_cmd'}) + '\n')
+                                             'type': 'unknown_cmd'}) + '\n')
+        finally:
+            self.conns -= 1
             
     def get(self, name, timeout=None):
         try:
@@ -79,7 +81,8 @@ class Manager(object):
     def stats(self):
         print 'num queues', len(self.queues)
         print 'num connections', self.conns
-
+        print 'queues:', self.queues.keys()
+        
 class QueueError(Exception):
     pass
 
