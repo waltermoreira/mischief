@@ -77,13 +77,16 @@ class ActorRef(object):
         return self.name
 
     def destroy_ref(self):
+        print 'destroying ref for', self.name
         self.q.destroy_ref()
 
     def destroy_actor(self):
+        print 'destroying actor', self.name
         self.q.destroy_queue()
 
     def __del__(self):
-        self.destroy_ref()
+        pass
+        # self.destroy_ref()
         
 class Actor(object):
     """
@@ -109,7 +112,11 @@ class Actor(object):
             self.my_log = actor_logger.debug
 
     def __del__(self):
-        self.destroy_actor()
+        try:
+            pass
+            #self.destroy_actor()
+        except:
+            pass
         
     def me(self):
         return self.name
@@ -207,8 +214,8 @@ class ThreadedActor(Actor):
 
 class FastActor(Actor):
 
-    def __init__(self, prefix=''):
-        super(FastActor, self).__init__(prefix=prefix)
+    def __init__(self, name=None, prefix=''):
+        super(FastActor, self).__init__(name=name, prefix=prefix)
         actor_logger.debug('[%s] Fast actor created' %self.name[:30])
         self.external = self.inbox
         self.inbox = gevent.queue.Queue()
