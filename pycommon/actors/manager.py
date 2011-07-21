@@ -1,6 +1,6 @@
 from gevent import spawn, socket
 from gevent.server import StreamServer
-from gevent.queue import Queue
+from gevent.queue import Queue, Empty
 import multiprocessing
 import json
 
@@ -29,7 +29,8 @@ class Manager(object):
                 self.put(obj['name'], obj['arg'])
             elif cmd == 'get':
                 print 'got get', obj['name']
-                res = self.get(obj['name'])
+                timeout = obj.get('timeout', None)
+                res = self.get(obj['name'], timeout=timeout)
                 print 'will return', res
                 stream.write(json.dumps(res) + '\n')
             elif cmd == 'quit':
@@ -42,14 +43,21 @@ class Manager(object):
             elif cmd == 'stats':
                 self.stats()
             else:
-                stream.write(json.dumps({'status': False}) + '\n')
+                stream.write(json.dumps({'status': False,
+                                         'type': 'unknown_cmd'}) + '\n')
             
-    def get(self, name):
+    def get(self, name, timeout=None):
         try:
             q = self.queues[name]
-            return q.get()
+            result = q.get(timeout=timeout)
+            return {'status': True,
+                    'result': result}
+        except Empty:
+            return {'status': False,
+                    'type': 'empty'}
         except KeyError:
             return {'status': False,
+                    'type': 'not_found',
                     'msg': "queue '%s' not found" %name}
 
     def put(self, name, obj):
@@ -59,7 +67,10 @@ class Manager(object):
     def stats(self):
         print 'num queues', len(self.queues)
         print 'num connections', self.conns
-        
+
+class QueueError(Exception):
+    pass
+
 class QueueRef(object):
 
     def __init__(self, name):
@@ -71,17 +82,20 @@ class QueueRef(object):
         self.sock.write(json.dumps({'cmd': 'put',
                                     'name': self.name,
                                     'arg': obj}) + '\n')
-        self.sock.flush()
 
-    def get(self):
+    def get(self, timeout=None):
         self.sock.write(json.dumps({'cmd': 'get',
+                                    'timeout': timeout,
                                     'name': self.name}) + '\n')
-        self.sock.flush()
         print 'ref will read from server'
         ret = json.loads(self.sock.readline())
         print 'read', ret
-        self.sock.flush()
-        return ret
+        if ret['status']:
+            return ret['result']
+        if ret['type'] == 'empty':
+            raise Empty
+        else:
+            raise QueueError(ret)
     
     def destroy_ref(self):
         self.sock.write(json.dumps({'cmd': 'quit'}) + '\n')
