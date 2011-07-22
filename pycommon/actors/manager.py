@@ -15,6 +15,7 @@ class Manager(object):
         self.server = StreamServer(address, self.handle_request)
         self.queues = {}
         self.conns = 0
+        self.connections = {}
         
     def start(self):
         server_proc = multiprocessing.Process(target=self.server.serve_forever)
@@ -49,6 +50,7 @@ class Manager(object):
                 elif cmd == 'del':
                     print '>>>>> removing actor', obj['name']
                     try:
+                        self.queues[obj['name']].put(None)
                         del self.queues[obj['name']]
                     except KeyError:
                         pass
