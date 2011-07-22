@@ -83,8 +83,10 @@ class ActorRef(object):
         self.q.destroy_queue()
 
     def __del__(self):
-        pass
-        # self.destroy_ref()
+        try:
+            self.destroy_ref()
+        except:
+            pass
         
 class Actor(object):
     """
