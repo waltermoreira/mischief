@@ -220,11 +220,15 @@ class FastActor(Actor):
         self.t.daemon = True
         self.t.start()
 
+    def destroy_actor(self):
+        q = ActorRef(self.external.name)
+        q.destroy_actor()
+
     def copy_to_internal(self):
         try:
             while True:
                 self.inbox.put(self.external.get())
-        except EOFError:
+        except:
             # when actor dies, queue will get eof
             # just leave
             pass

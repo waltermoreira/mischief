@@ -1,6 +1,7 @@
 from gevent import spawn, socket
 from gevent.server import StreamServer
 from gevent.queue import Queue, Empty
+from gevent.coros import RLock
 import multiprocessing
 import json
 import socket as py_socket
@@ -46,7 +47,11 @@ class Manager(object):
                 elif cmd == 'quit':
                     return
                 elif cmd == 'del':
-                    del self.queues[obj['name']]
+                    print '>>>>> removing actor', obj['name']
+                    try:
+                        del self.queues[obj['name']]
+                    except KeyError:
+                        pass
                 elif cmd == 'touch':
                     self.touch(obj['name'])
                 elif cmd == 'stats':
