@@ -16,6 +16,7 @@ class Manager(object):
         self.queues = {}
         self.conns = 0
         self.connections = {}
+        self.address = address
         
     def start(self):
         server_proc = multiprocessing.Process(target=self.server.serve_forever)
@@ -23,6 +24,12 @@ class Manager(object):
         server_proc.start()
         return server_proc
 
+    def stop(self):
+        s = py_socket.create_connection(self.address)
+        f = s.makefile('w', bufsize=0)
+        f.write(json.dumps({'cmd': 'stop_server'}) + '\n')
+        f.close()
+        
     def handle_request(self, sock, address):
         self.conns += 1
         stream = sock.makefile('w', bufsize=0)
@@ -58,6 +65,9 @@ class Manager(object):
                     self.touch(obj['name'])
                 elif cmd == 'stats':
                     self.stats()
+                elif cmd == 'stop_server':
+                    self.server.stop()
+                    return
                 else:
                     stream.write(json.dumps({'status': False,
                                              'type': 'unknown_cmd'}) + '\n')
