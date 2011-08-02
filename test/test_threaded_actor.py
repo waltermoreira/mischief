@@ -1,4 +1,4 @@
-from pycommon.actors.actor import Actor
+from pycommon.actors.actor import Actor, ActorRef
 import uuid
 
 def test_reply(qm):
@@ -9,9 +9,9 @@ def test_reply(qm):
                 'answer': lambda msg: result.append(msg['answer'])})
             return result[0]
     x = a('a')
-    qt = qm.get_named('t')
-    qt.put({'tag': 'reply',
-            'reply_to': 'a'})
+    qt = ActorRef('t')
+    qt.send({'tag': 'reply',
+             'reply_to': 'a'})
     assert x.act() == 5
     
 def test_inbox(qm):
@@ -22,11 +22,11 @@ def test_inbox(qm):
                 'answer': lambda msg: result.append(msg['answer'])})
             return result[0]
     x = a('a')
-    qt = qm.get_named('t')
-    qt.put({'tag': 'foo'})
-    qt.put({'tag': 'bar'})
-    qt.put({'tag': 'queue',
-            'reply_to': 'a'})
+    qt = ActorRef('t')
+    qt.send({'tag': 'foo'})
+    qt.send({'tag': 'bar'})
+    qt.send({'tag': 'queue',
+             'reply_to': 'a'})
     assert x.act() == 2
 
 def test_wildcard(qm):
@@ -37,8 +37,8 @@ def test_wildcard(qm):
                 '*': lambda msg: result.append(msg['tag'])})
             return result
     x = a('a')
-    qa = qm.get_named('a')
-    qa.put({'tag': 'foo'})
+    qa = ActorRef('a')
+    qa.send({'tag': 'foo'})
     assert x.act() == ['foo']
 
 def test_timeout(qm):
@@ -61,7 +61,8 @@ def test_read_value(qm):
                 })
             return self.foo
     x = a('a')
-    qm.get_actor_ref('a').send({'tag': 'ack', 'foo': 5})
+    qm = ActorRef('a')
+    qm.send({'tag': 'ack', 'foo': 5})
     assert x.act() == 5
 
 def test_unnamed(qm):

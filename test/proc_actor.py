@@ -1,4 +1,4 @@
-from pycommon.actors.actor import Actor, ActorManager
+from pycommon.actors.actor import Actor
 import subprocess
 import os.path
 import sys
@@ -38,7 +38,5 @@ class _process_actor(Actor):
                 'spawn': 'spawn'})
 
 if __name__ == '__main__':
-    qm = ActorManager()
-    qm.connect()
     q = _process_actor('p')
     q.act()
