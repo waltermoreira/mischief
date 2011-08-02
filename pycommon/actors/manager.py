@@ -5,6 +5,7 @@ from gevent.coros import RLock
 import multiprocessing
 import json
 import socket as py_socket
+import time
 
 IP = 'localhost'
 PORT = 5123
@@ -17,11 +18,24 @@ class Manager(object):
         self.conns = 0
         self.connections = {}
         self.address = address
+
+    def _is_alive(self):
+        try:
+            s = py_socket.create_connection(self.address)
+            s.close()
+            return True
+        except py_socket.error:
+            return False
         
     def start(self):
+        if self._is_alive():
+            return
         server_proc = multiprocessing.Process(target=self.server.serve_forever)
         server_proc.daemon = True
         server_proc.start()
+        while not self._is_alive():
+            print 'not alive yet'
+            time.sleep(0.1)
         return server_proc
 
     def stop(self):
