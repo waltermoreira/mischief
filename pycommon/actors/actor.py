@@ -75,11 +75,9 @@ class ActorRef(object):
         return self.name
 
     def destroy_ref(self):
-        print 'destroying ref for', self.name
         self.q.destroy_ref()
 
     def destroy_actor(self):
-        print 'destroying actor', self.name
         self.q.destroy_queue()
 
     def __del__(self):
