@@ -1,4 +1,4 @@
-from pycommon.actors.actor import Actor
+from pycommon.actors.actor import Actor, ActorRef
 import subprocess
 import os.path
 import sys
@@ -15,18 +15,18 @@ def process_actor():
 class _process_actor(Actor):
 
     def reply(self, msg):
-        sender = msg['reply_to']
-        self.send(sender, {'tag': 'answer',
-                           'answer': 5})
+        sender = ActorRef(msg['reply_to'])
+        sender.send({'tag': 'answer',
+                     'answer': 5})
 
     def queue(self, msg):
-        sender = msg['reply_to']
-        self.send(sender, {'tag': 'answer',
-                           'answer': self.inbox.qsize()})
+        sender = ActorRef(msg['reply_to'])
+        sender.send({'tag': 'answer',
+                     'answer': 2})
 
     def spawn(self, msg):
         _child('child')
-        self.get_actor_ref(msg['reply_to']).send({
+        ActorRef(msg['reply_to']).send({
             'tag': 'reply'
             })
         
