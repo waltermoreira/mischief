@@ -157,7 +157,7 @@ class Actor(object):
         start_time = current_time = time.time()
         msg = {}
         self.my_log('[Actor %s] starting receive'%(self.name,))
-        starting_size = self.inbox.size()
+        starting_size = self.inbox.qsize()
         checked_objects = 0
         while True:
             if checked_objects >= starting_size and timeout is not None and current_time > start_time + timeout:
@@ -171,6 +171,7 @@ class Actor(object):
                 if type(msg) != dict:
                     actor_logger.debug('[Actor %s] got msg: %s' %(self.name, msg))
                 self.my_log('[Actor %s] got object: %s' %(self.name, msg))
+                self.my_log('[...     ] in receive: %s' %(patterns,))
             except Queue.Empty:
                 self.my_log('[Actor %s] empty inbox' %(self.name,))
                 continue
