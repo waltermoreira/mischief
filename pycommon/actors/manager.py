@@ -79,6 +79,9 @@ class Manager(object):
                     self.touch(obj['name'])
                 elif cmd == 'stats':
                     self.stats()
+                elif cmd == 'size':
+                    res = self.size(obj['name'])
+                    stream.write(json.dumps(res) + '\n')
                 elif cmd == 'stop_server':
                     self.server.stop()
                     return
@@ -109,6 +112,11 @@ class Manager(object):
         q = self.queues[name]
         q.put(obj)
 
+    def size(self, name):
+        q = self.queues[name]
+        return {'status': True,
+                'result': q.qsize()}
+        
     def stats(self):
         print 'num queues', len(self.queues)
         print 'num connections', self.conns
@@ -151,6 +159,15 @@ class QueueRef(object):
         self.sock.write(json.dumps({'cmd': 'del',
                                     'name': self.name}) + '\n')
         self.destroy_ref()
+
+    def size(self):
+        self.sock.write(json.dumps({'cmd': 'size',
+                                    'name': self.name}) + '\n')
+        ret = json.loads(self.sock.readline())
+        if ret['status']:
+            return ret['result']
+        else:
+            raise QueueError(ret)
         
     def stats(self):
         self.sock.write(json.dumps({'cmd': 'stats'}) + '\n')
