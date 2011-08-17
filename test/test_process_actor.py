@@ -64,6 +64,22 @@ def test_timeout_zero(qm):
     y = x.act()
     assert y == 1
 
+def test_timeout_zero_2(qm):
+    class a(Actor):
+        def act(self):
+            self.receive({
+                'foo': self.read_value('data'),
+                }, timeout=0)
+            return getattr(self, 'data', None)
+    x = a('b')
+    y = ActorRef('b')
+    y.send({'tag': 'bar'})
+    y.send({'tag': 'baz'})
+    y.send({'tag': 'foo', 'data': 1})
+    y.send({'tag': 'gii'})
+    z = x.act()
+    assert z == 1
+        
 def test_timeout_zero_no_match(qm):
     class a(Actor):
         def act(self):

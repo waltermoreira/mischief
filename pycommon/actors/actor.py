@@ -157,14 +157,17 @@ class Actor(object):
         start_time = current_time = time.time()
         msg = {}
         self.my_log('[Actor %s] starting receive'%(self.name,))
+        starting_size = self.inbox.size()
+        checked_objects = 0
         while True:
-            if timeout is not None and current_time > start_time + timeout:
+            if checked_objects >= starting_size and timeout is not None and current_time > start_time + timeout:
                 matched = 'timeout'
                 break
             current_time = time.time()
             try:
                 self.my_log('[Actor %s] checking inbox with timeout: %s'%(self.name, inbox_polling))
                 msg = self.inbox.get(timeout=inbox_polling)
+                checked_objects += 1
                 if type(msg) != dict:
                     actor_logger.debug('[Actor %s] got msg: %s' %(self.name, msg))
                 self.my_log('[Actor %s] got object: %s' %(self.name, msg))
