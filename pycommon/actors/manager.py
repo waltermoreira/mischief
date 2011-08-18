@@ -160,7 +160,7 @@ class QueueRef(object):
                                     'name': self.name}) + '\n')
         self.destroy_ref()
 
-    def size(self):
+    def qsize(self):
         self.sock.write(json.dumps({'cmd': 'size',
                                     'name': self.name}) + '\n')
         ret = json.loads(self.sock.readline())
