@@ -34,7 +34,6 @@ class Manager(object):
         server_proc.daemon = True
         server_proc.start()
         while not self._is_alive():
-            print 'not alive yet'
             time.sleep(0.1)
         return server_proc
 
@@ -69,7 +68,6 @@ class Manager(object):
                 elif cmd == 'quit':
                     return
                 elif cmd == 'del':
-                    print '>>>>> removing actor', obj['name']
                     try:
                         self.queues[obj['name']].put(None)
                         del self.queues[obj['name']]
@@ -82,6 +80,9 @@ class Manager(object):
                 elif cmd == 'size':
                     res = self.size(obj['name'])
                     stream.write(json.dumps(res) + '\n')
+                elif cmd == 'flush':
+                    self.flush(obj['name'])
+                    stream.write(json.dumps({'status': True}) + '\n')
                 elif cmd == 'stop_server':
                     self.server.stop()
                     return
@@ -90,7 +91,10 @@ class Manager(object):
                                              'type': 'unknown_cmd'}) + '\n')
         finally:
             self.conns -= 1
-            
+
+    def flush(self, name):
+        self.queues[name] = Queue()
+        
     def get(self, name, timeout=None):
         try:
             q = self.queues[name]
@@ -168,6 +172,15 @@ class QueueRef(object):
             return ret['result']
         else:
             raise QueueError(ret)
-        
+
+    def flush(self):
+        self.sock.write(json.dumps({'cmd': 'flush',
+                                    'name': self.name}) + '\n')
+        ret = json.loads(self.sock.readline())
+        if ret['status']:
+            return True
+        else:
+            raise QueueError(ret)
+
     def stats(self):
         self.sock.write(json.dumps({'cmd': 'stats'}) + '\n')
