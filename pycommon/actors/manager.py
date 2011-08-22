@@ -19,6 +19,18 @@ class Manager(object):
         self.connections = {}
         self.address = address
 
+    def report(self):
+        print '---'
+        for q in self.queues:
+            print 'Queue:', q
+            queue = self.queues[q]
+            n = queue.qsize()
+            print 'Size:', n
+            for i in range(n):
+                x = queue.get()
+                print ' elt:', x
+                queue.put(x)
+                
     def _is_alive(self):
         try:
             s = py_socket.create_connection(self.address)
@@ -86,6 +98,8 @@ class Manager(object):
                 elif cmd == 'stop_server':
                     self.server.stop()
                     return
+                elif cmd == 'report':
+                    self.report()
                 else:
                     stream.write(json.dumps({'status': False,
                                              'type': 'unknown_cmd'}) + '\n')
@@ -184,3 +198,6 @@ class QueueRef(object):
 
     def stats(self):
         self.sock.write(json.dumps({'cmd': 'stats'}) + '\n')
+
+    def report(self):
+        self.sock.write(json.dumps({'cmd': 'report'}) + '\n')
