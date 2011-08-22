@@ -234,8 +234,13 @@ class FastActor(Actor):
     def copy_to_internal(self):
         try:
             while True:
-                self.inbox.put(self.external.get())
-        except:
+                x = self.external.get()
+                if x is None:
+                    self.external.flush()
+                    self.inbox = Queue.Queue()
+                else:
+                    self.inbox.put(x)
+        except Exception as exc:
             # when actor dies, queue will get eof
             # just leave
             pass
