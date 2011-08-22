@@ -80,6 +80,9 @@ class ActorRef(object):
     def destroy_actor(self):
         self.q.destroy_queue()
 
+    def flush(self):
+        self.q.flush()
+
     def __del__(self):
         try:
             self.destroy_ref()
