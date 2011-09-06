@@ -68,6 +68,9 @@ class Manager(object):
                     # the actor is finishing while doing some
                     # request. We ignore it.
                     if exc.errno == errno.ECONNRESET:
+                        import traceback
+                        print '-- Connection reset by peer. Ignoring...'
+                        print '\n'.join('-- '+x for x in traceback.format_exc())
                         return
                 except ValueError as exc:
                     try:
