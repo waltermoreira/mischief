@@ -6,6 +6,7 @@ import multiprocessing
 import json
 import socket as py_socket
 import time
+import errno
 
 IP = 'localhost'
 PORT = 5123
