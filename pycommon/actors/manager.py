@@ -62,6 +62,12 @@ class Manager(object):
             while True:
                 try:
                     obj = json.loads(stream.readline())
+                except socket.error as exc:
+                    # If we get a 'connection reset by peer' it means
+                    # the actor is finishing while doing some
+                    # request. We ignore it.
+                    if exc.errno == errno.ECONNRESET:
+                        return
                 except ValueError as exc:
                     try:
                         stream.write(json.dumps({'status': False,
