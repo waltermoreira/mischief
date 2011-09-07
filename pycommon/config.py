@@ -12,11 +12,24 @@ import os
 import importlib
 import inspect
 from os.path import dirname, join, abspath
-from ConfigParser import ConfigParser
+from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 import log
 
 HET2_DEPLOY = None
 HET2_AUXIL = None
+
+ACTOR_MANAGER_IP = 'localhost'
+ACTOR_MANAGER_PORT = 5123
+
+def get_manager_address():
+    conf_file = os.path.join(os.environ['HET2_DEPLOY'],
+                             'etc/actors.conf')
+    c = ConfigParser()
+    res = c.read(conf_file)
+    try:
+        return (c.get('manager', 'host'), int(c.get('manager', 'port')))
+    except (NoSectionError, NoOptionError):
+        return (ACTOR_MANAGER_IP, ACTOR_MANAGER_PORT)
 
 def read_config(cfg, mod):
     """
