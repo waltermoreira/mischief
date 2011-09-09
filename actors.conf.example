@@ -1,0 +1,7 @@
+[manager]
+
+# ip and port of where we want to run the manager
+# Defaults are set to:
+#
+# host = localhost
+# port = 5123

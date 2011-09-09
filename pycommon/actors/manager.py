@@ -7,9 +7,9 @@ import json
 import socket as py_socket
 import time
 import errno
+from pycommon import config
 
-IP = 'localhost'
-PORT = 5123
+(IP, PORT) = config.get_manager_address()
 
 class Manager(object):
 
