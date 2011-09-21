@@ -106,7 +106,23 @@ def setup_log(mod_name, deploy_dir):
 
     LOGGER_LOGGER.addHandler(socket_handler)
     LOGGER_LOGGER.setLevel(logging.DEBUG)
-    
+
+def setup(mod_name):
+    path = os.environ['HET2_DEPLOY']
+    setup_log(mod_name, path)
+
+def to_file():
+    return logging.getLogger('file')
+
+def to_console():
+    return logging.getLogger('file.console')
+
+def to_logger():
+    return logging.getLogger('file.logger')
+
+def to_everywhere():
+    return logging.getLogger('file.console.logger')
+
 def test(s):
     setup_log('gui', '/home/moreira/deploy')
     return logging.getLogger(s)
