@@ -5,6 +5,7 @@ Tools to log to screen, rolling files, and logger server.
 import logging
 import logging.handlers
 import os
+import errno
 import sys
 import json
 import itertools
@@ -73,9 +74,16 @@ def setup_log(mod_name, deploy_dir):
     LOGGER_FILE = logging.getLogger('file')
     LOGGER_DEBUG = logging.getLogger('file.console')
     LOGGER_LOGGER = logging.getLogger('file.logger')
-    LOGGER_FULL = logging.getLogger('file.full')
-    
-    fname = os.path.join(deploy_dir, 'log', mod_name, 'gui.log')
+    LOGGER_FULL = logging.getLogger('file.console.logger')
+
+    path = os.path.join(deploy_dir, 'log', mod_name)
+    try:
+        os.makedirs(path)
+    except os.error as exc:
+        # ignore error if dir already exists
+        if exc.errno != errno.EEXIST:
+            raise
+    fname =  os.path.join(path, mod_name+'.log')
 
     file_handler = logging.handlers.RotatingFileHandler(fname)
     console_handler = logging.StreamHandler(sys.stdout)
