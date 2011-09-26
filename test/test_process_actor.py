@@ -1,4 +1,5 @@
 from pycommon.actors.actor import Actor, ActorRef
+import time
 
 def test_reply(qm):
     class a(Actor):
@@ -77,6 +78,8 @@ def test_timeout_zero_2(qm):
     y.send({'tag': 'baz'})
     y.send({'tag': 'foo', 'data': 1})
     y.send({'tag': 'gii'})
+    while y.q.qsize() < 4:
+        time.sleep(0.1)
     z = x.act()
     assert z == 1
         
