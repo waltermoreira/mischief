@@ -61,6 +61,7 @@ class Manager(object):
         stream = sock.makefile('w', bufsize=0)
         try:
             while True:
+                obj = None
                 try:
                     obj = json.loads(stream.readline())
                 except socket.error as exc:
@@ -69,10 +70,20 @@ class Manager(object):
                     # request. We ignore it.
                     if exc.errno == errno.ECONNRESET:
                         import traceback
-                        print '-- Connection reset by peer. Ignoring...'
-                        print '\n'.join('-- '+x for x in traceback.format_exc())
-                        return
+                        print '-- Connection reset by peer'
+                        print traceback.format_exc()
+                        # if obj is not none, do not ignore the
+                        # message
+                        if obj is None:
+                            print '-- Message is empty. Ignoring...'
+                            return
+                        print '-- Will process message:', obj
+                    else:
+                        # raise any socket.error other than
+                        # 'connection reset by peer'
+                        raise
                 except ValueError as exc:
+                    # wrong json object
                     try:
                         stream.write(json.dumps({'status': False,
                                                  'type': 'not_a_json',
