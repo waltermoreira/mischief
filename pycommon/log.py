@@ -72,6 +72,10 @@ class JSONFormatter(logging.Formatter):
     
 def setup_log(mod_name, deploy_dir):
     LOGGER_FILE = logging.getLogger('file')
+    if LOGGER_FILE.handlers:
+        # if the file logger has handlers, it means they are all
+        # already configured
+        return
     LOGGER_DEBUG = logging.getLogger('file.console')
     LOGGER_LOGGER = logging.getLogger('file.logger')
     LOGGER_FULL = logging.getLogger('file.console.logger')
