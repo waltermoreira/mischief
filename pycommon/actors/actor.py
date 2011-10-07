@@ -235,9 +235,15 @@ class FastActor(Actor):
         try:
             while True:
                 x = self.external.get()
+                # getting None means we want to refresh the inbox by flushing everything
                 if x is None:
+                    actor_logger.debug('Thread got None. Refreshing queue')
                     self.external.flush()
                     self.inbox = Queue.Queue()
+                # getting False means that the socket is closing, just leave so the thread finishes
+                elif x is False:
+                    actor_logger.debug('Thread got False')
+                    return
                 else:
                     self.inbox.put(x)
         except Exception as exc:

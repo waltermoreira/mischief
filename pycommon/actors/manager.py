@@ -8,8 +8,17 @@ import socket as py_socket
 import time
 import errno
 from pycommon import config
+import os
 
 (IP, PORT) = config.get_manager_address()
+
+import logging
+mgr_logger = logging.getLogger('manager')
+handler = logging.handlers.RotatingFileHandler(os.path.join(os.environ['HET2_DEPLOY'], 'log/gui', 'manager.log'))
+formatter = logging.Formatter("%(asctime)s %(levelname)-8s [%(filename)30s:%(lineno)-4s] - %(message)s")
+handler.setFormatter(formatter)
+mgr_logger.addHandler(handler)
+mgr_logger.setLevel(logging.DEBUG)
 
 class Manager(object):
 
@@ -19,6 +28,13 @@ class Manager(object):
         self.conns = 0
         self.connections = {}
         self.address = address
+
+    def get_report(self):
+        result = {}
+        for q in self.queues:
+            queue = self.queues[q]
+            result[q] = queue.qsize()
+        return result
 
     def report(self):
         print '---'
@@ -52,9 +68,7 @@ class Manager(object):
 
     def stop(self):
         s = py_socket.create_connection(self.address)
-        f = s.makefile('w', bufsize=0)
-        f.write(json.dumps({'cmd': 'stop_server'}) + '\n')
-        f.close()
+        write_to(s.makefile('w', 0), json.dumps({'cmd': 'stop_server'}), sock=s)
         
     def handle_request(self, sock, address):
         self.conns += 1
@@ -63,7 +77,10 @@ class Manager(object):
             while True:
                 obj = None
                 try:
-                    obj = json.loads(stream.readline())
+                    line = readline_from(stream, sock=sock)
+                    if not line:
+                        return
+                    obj = json.loads(line)
                 except socket.error as exc:
                     # If we get a 'connection reset by peer' it means
                     # the actor is finishing while doing some
@@ -85,9 +102,9 @@ class Manager(object):
                 except ValueError as exc:
                     # wrong json object
                     try:
-                        stream.write(json.dumps({'status': False,
+                        write_to(stream, json.dumps({'status': False,
                                                  'type': 'not_a_json',
-                                                 'msg': exc.message}) + '\n')
+                                                 'msg': exc.message}) + '\n', sock=sock)
                     except:
                         pass
                     return
@@ -97,7 +114,7 @@ class Manager(object):
                 elif cmd == 'get':
                     timeout = obj.get('timeout', None)
                     res = self.get(obj['name'], timeout=timeout)
-                    stream.write(json.dumps(res) + '\n')
+                    write_to(stream, json.dumps(res) + '\n', sock=sock)
                 elif cmd == 'quit':
                     return
                 elif cmd == 'del':
@@ -112,18 +129,21 @@ class Manager(object):
                     self.stats()
                 elif cmd == 'size':
                     res = self.size(obj['name'])
-                    stream.write(json.dumps(res) + '\n')
+                    write_to(stream, json.dumps(res) + '\n', sock=sock)
                 elif cmd == 'flush':
                     self.flush(obj['name'])
-                    stream.write(json.dumps({'status': True}) + '\n')
+                    write_to(stream, json.dumps({'status': True}) + '\n', sock=sock)
                 elif cmd == 'stop_server':
                     self.server.stop()
                     return
                 elif cmd == 'report':
                     self.report()
+                elif cmd == 'get_report':
+                    report = self.get_report()
+                    write_to(stream, json.dumps(report) + '\n', sock=sock)
                 else:
-                    stream.write(json.dumps({'status': False,
-                                             'type': 'unknown_cmd'}) + '\n')
+                    write_to(stream, json.dumps({'status': False,
+                                             'type': 'unknown_cmd'}) + '\n', sock=sock)
         finally:
             self.conns -= 1
 
@@ -168,21 +188,24 @@ class QueueRef(object):
 
     def __init__(self, name, address=(IP, PORT)):
         self.name = name
-        s = py_socket.create_connection(address)
-        self.sock = s.makefile('w', bufsize=0)
-        self.sock.write(json.dumps({'cmd': 'touch',
-                                    'name': self.name}) + '\n')
+        self.sock = py_socket.create_connection(address)
+        self.stream = self.sock.makefile('w', 0)
+        write_to(self.stream, json.dumps({'cmd': 'touch',
+                                    'name': self.name}) + '\n', sock=self.sock)
         
     def put(self, obj):
-        self.sock.write(json.dumps({'cmd': 'put',
+        write_to(self.stream, json.dumps({'cmd': 'put',
                                     'name': self.name,
-                                    'arg': obj}) + '\n')
+                                    'arg': obj}) + '\n', sock=self.sock)
 
     def get(self, timeout=None):
-        self.sock.write(json.dumps({'cmd': 'get',
+        write_to(self.stream, json.dumps({'cmd': 'get',
                                     'timeout': timeout,
-                                    'name': self.name}) + '\n')
-        ret = json.loads(self.sock.readline())
+                                    'name': self.name}) + '\n', sock=self.sock)
+        try:
+            ret = json.loads(readline_from(self.stream, sock=self.sock))
+        except ValueError:
+            return False
         if ret['status']:
             return ret['result']
         if ret['type'] == 'empty':
@@ -191,34 +214,84 @@ class QueueRef(object):
             raise QueueError(ret)
     
     def destroy_ref(self):
-        self.sock.write(json.dumps({'cmd': 'quit'}) + '\n')
-        self.sock.close()
+        write_to(self.stream, json.dumps({'cmd': 'quit'}) + '\n', sock=self.sock)
+        try:
+            self.stream.close()
+            self.sock.close()
+        except:
+            mgr_logger.debug('Exception while closing:')
+            import traceback
+            mgr_logger.debug(traceback.format_exc())
 
     def destroy_queue(self):
-        self.sock.write(json.dumps({'cmd': 'del',
-                                    'name': self.name}) + '\n')
+        write_to(self.stream, json.dumps({'cmd': 'del',
+                                    'name': self.name}) + '\n', sock=self.sock)
         self.destroy_ref()
 
     def qsize(self):
-        self.sock.write(json.dumps({'cmd': 'size',
-                                    'name': self.name}) + '\n')
-        ret = json.loads(self.sock.readline())
+        write_to(self.stream, json.dumps({'cmd': 'size',
+                                    'name': self.name}) + '\n', sock=self.sock)
+        try:
+            ret = json.loads(readline_from(self.stream, sock=self.sock))
+        except ValueError:
+            return False
         if ret['status']:
             return ret['result']
         else:
             raise QueueError(ret)
 
     def flush(self):
-        self.sock.write(json.dumps({'cmd': 'flush',
-                                    'name': self.name}) + '\n')
-        ret = json.loads(self.sock.readline())
+        write_to(self.stream, json.dumps({'cmd': 'flush',
+                                    'name': self.name}) + '\n', sock=self.sock)
+        try:
+            ret = json.loads(readline_from(self.stream, sock=self.sock))
+        except ValueError:
+            return False
         if ret['status']:
             return True
         else:
             raise QueueError(ret)
 
     def stats(self):
-        self.sock.write(json.dumps({'cmd': 'stats'}) + '\n')
+        write_to(self.stream, json.dumps({'cmd': 'stats'}) + '\n', sock=self.sock)
 
     def report(self):
-        self.sock.write(json.dumps({'cmd': 'report'}) + '\n')
+        write_to(self.stream, json.dumps({'cmd': 'report'}) + '\n', sock=self.sock)
+
+def write_to(stream, data, sock=None, retries=3, sleep_func=time.sleep):
+    """
+    Send data to a socket, retrying if necessary
+    """
+    try:
+        try:
+            address = '%s writes to %s' %(sock.getsockname(), sock.getpeername())
+        except:
+            address = '...'
+        mgr_logger.debug('[%s] %s' %(address, data))
+        stream.write(data)
+    except socket.error as exc:
+        if exc.errno in (errno.EPIPE, errno.ECONNRESET):
+            mgr_logger.debug('Got broken pipe when I was about to write: %s' %(data,))
+        else:
+            mgr_logger.debug('socket.error: %s' %(exc.errno,))
+        import traceback
+        mgr_logger.debug(traceback.format_exc())
+    except:
+        mgr_logger.debug('Was about to write: %s' %(data,))
+        import traceback
+        mgr_logger.debug(traceback.format_exc())
+
+def readline_from(stream, sock=None, retries=3):
+    try:
+        try:
+            address = 'from %s reads into %s' %(sock.getpeername(), sock.getsockname())
+        except:
+            address = '...'
+        x = stream.readline()   
+        mgr_logger.debug('[%s] %s' %(address, x))
+        return x 
+    except:
+        mgr_logger.debug('got this while reading')
+        import traceback
+        mgr_logger.debug(traceback.format_exc())
+        return ''
