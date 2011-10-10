@@ -53,7 +53,8 @@ class Manager(object):
             s = py_socket.create_connection(self.address)
             s.close()
             return True
-        except py_socket.error:
+        except (py_socket.error, IOError):
+            # Errors mean the connection is NOT alive
             return False
         
     def start(self):
