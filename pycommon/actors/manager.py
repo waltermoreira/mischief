@@ -68,8 +68,12 @@ class Manager(object):
         return server_proc
 
     def stop(self):
-        s = py_socket.create_connection(self.address)
-        write_to(s.makefile('w', 0), json.dumps({'cmd': 'stop_server'}), sock=s)
+        try:
+            s = py_socket.create_connection(self.address)
+            write_to(s.makefile('w', 0), json.dumps({'cmd': 'stop_server'}), sock=s)
+        except (py_socket.error, IOError):
+            # Ignore socket errors when stopping
+            pass
         
     def handle_request(self, sock, address):
         self.conns += 1
