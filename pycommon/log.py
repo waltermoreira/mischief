@@ -10,6 +10,7 @@ import sys
 import json
 import itertools
 import re
+import gui.config as config
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
@@ -65,20 +66,15 @@ class JSONSocketHandler(logging.handlers.SocketHandler):
     def makePickle(self, record):
         return make_log_command(record)
     
-class JSONFormatter(logging.Formatter):
-
-    def format(self, record):
-        return make_log_command(record)
-    
 def setup_log(mod_name, deploy_dir):
-    LOGGER_FILE = logging.getLogger('file')
+    LOGGER_FILE = logging.getLogger(mod_name+'.file')
     if LOGGER_FILE.handlers:
         # if the file logger has handlers, it means they are all
         # already configured
         return
-    LOGGER_DEBUG = logging.getLogger('file.console')
-    LOGGER_LOGGER = logging.getLogger('file.logger')
-    LOGGER_FULL = logging.getLogger('file.console.logger')
+    LOGGER_DEBUG = logging.getLogger(mod_name+'.file.console')
+    LOGGER_LOGGER = logging.getLogger(mod_name+'.file.logger')
+    LOGGER_FULL = logging.getLogger(mod_name+'.file.full')
 
     path = os.path.join(deploy_dir, 'log', mod_name)
     try:
@@ -91,42 +87,41 @@ def setup_log(mod_name, deploy_dir):
 
     file_handler = logging.handlers.RotatingFileHandler(fname)
     console_handler = logging.StreamHandler(sys.stdout)
-    socket_handler = JSONSocketHandler('localhost', 8070)
+    socket_handler = JSONSocketHandler(config.log_host, config.log_port)
 
     formatter = logging.Formatter(
         "%(asctime)s %(levelname)-8s "
         "[%(filename)30s:%(lineno)-4s] "
         "- %(message)s")
-    json_formatter = JSONFormatter()
 
     file_handler.setFormatter(formatter)
     console_handler.setFormatter(formatter)
-
+    
     LOGGER_FILE.addHandler(file_handler)
     LOGGER_FILE.setLevel(logging.DEBUG)
 
+    LOGGER_DEBUG.addHandler(file_handler)
     LOGGER_DEBUG.addHandler(console_handler)
     LOGGER_DEBUG.setLevel(logging.DEBUG)
 
+    LOGGER_LOGGER.addHandler(file_handler)
     LOGGER_LOGGER.addHandler(socket_handler)
     LOGGER_LOGGER.setLevel(logging.DEBUG)
 
-def setup(mod_name):
+    LOGGER_FULL.addHandler(file_handler)
+    LOGGER_FULL.addHandler(console_handler)
+    LOGGER_FULL.addHandler(socket_handler)
+    LOGGER_FULL.setLevel(logging.DEBUG)
+
+def setup(mod_name, to_where='to_everywhere'):
     path = os.environ['HET2_DEPLOY']
     setup_log(mod_name, path)
-
-def to_file():
-    return logging.getLogger('file')
-
-def to_console():
-    return logging.getLogger('file.console')
-
-def to_logger():
-    return logging.getLogger('file.logger')
-
-def to_everywhere():
-    return logging.getLogger('file.console.logger')
-
+    destinations = {'to_file': 'file',
+                    'to_console': 'file.console',
+                    'to_logger': 'file.logger',
+                    'to_everywhere': 'file.full'}
+    return logging.getLogger(mod_name+'.'+destinations[to_where])
+    
 def test(s):
     setup_log('gui', '/home/moreira/deploy')
     return logging.getLogger(s)
