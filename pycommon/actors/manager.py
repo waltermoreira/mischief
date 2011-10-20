@@ -2,23 +2,18 @@ from gevent import spawn, socket
 from gevent.server import StreamServer
 from gevent.queue import Queue, Empty
 from gevent.coros import RLock
+import traceback
 import multiprocessing
 import json
 import socket as py_socket
 import time
 import errno
-from pycommon import config
+from pycommon import config, log
 import os
 
 (IP, PORT) = config.get_manager_address()
 
-import logging
-mgr_logger = logging.getLogger('manager')
-handler = logging.handlers.RotatingFileHandler(os.path.join(os.environ['HET2_DEPLOY'], 'log/gui', 'manager.log'))
-formatter = logging.Formatter("%(asctime)s %(levelname)-8s [%(filename)30s:%(lineno)-4s] - %(message)s")
-handler.setFormatter(formatter)
-mgr_logger.addHandler(handler)
-mgr_logger.setLevel(logging.DEBUG)
+logger = log.setup('manager', 'to_console')
 
 class Manager(object):
 
@@ -37,7 +32,6 @@ class Manager(object):
         return result
 
     def report(self):
-        print '---'
         for q in self.queues:
             print 'Queue:', q
             queue = self.queues[q]
@@ -76,7 +70,7 @@ class Manager(object):
     def stop(self):
         try:
             s = py_socket.create_connection(self.address)
-            write_to(s.makefile('w', 0), json.dumps({'cmd': 'stop_server'}), sock=s)
+            write_to(s.makefile('w', 0), json.dumps({'cmd': 'stop_server'}))
         except (py_socket.error, IOError):
             # Ignore socket errors when stopping
             pass
@@ -119,6 +113,7 @@ class Manager(object):
 
     def _cmd_stop_server(self, stream, obj):
         self.server.stop()
+        logger.debug('Manager stopped')
         return
 
     def _cmd_report(self, stream, obj):
@@ -141,7 +136,7 @@ class Manager(object):
             while True:
                 obj = None
                 try:
-                    line = readline_from(stream, sock=sock)
+                    line = readline_from(stream)
                     if not line:
                         return
                     obj = json.loads(line)
@@ -153,8 +148,7 @@ class Manager(object):
                     write_to(stream, json.dumps({'status': False,
                                                  'type': 'not_a_json',
                                                  'msg': exc.message,
-                                                 'line': line}),
-                             sock=sock)
+                                                 'line': line}))
                     return
                 except StopIteration:
                     return
@@ -162,6 +156,10 @@ class Manager(object):
             self.conns -= 1
 
     def flush(self, name):
+        """
+        Discard all elements in the queue by creating a new one. The
+        previous one should be garbage collected.
+        """
         self.queues[name] = Queue()
         
     def get(self, name, timeout=None):
@@ -205,22 +203,20 @@ class QueueRef(object):
         self.sock = py_socket.create_connection(address)
         self.stream = self.sock.makefile('w', 0)
         write_to(self.stream, json.dumps({'cmd': 'touch',
-                                          'name': self.name}),
-            sock=self.sock)
+                                          'name': self.name}))
         
     def put(self, obj):
         write_to(self.stream, json.dumps({'cmd': 'put',
                                           'name': self.name,
                                           'arg': obj
-                                          }),
-            sock=self.sock)
+                                          }))
 
     def get(self, timeout=None):
         write_to(self.stream, json.dumps({'cmd': 'get',
                                     'timeout': timeout,
-                                    'name': self.name}), sock=self.sock)
+                                    'name': self.name}))
         try:
-            ret = json.loads(readline_from(self.stream, sock=self.sock))
+            ret = json.loads(readline_from(self.stream))
         except ValueError:
             return False
         if ret['status']:
@@ -231,25 +227,33 @@ class QueueRef(object):
             raise QueueError(ret)
     
     def destroy_ref(self):
-        write_to(self.stream, json.dumps({'cmd': 'quit'}), sock=self.sock)
+        """
+        Ask manager to remove traces of this reference to the
+        queue. We close the client socket too, to be sure we don't
+        leak open descriptors.
+        """
+        write_to(self.stream, json.dumps({'cmd': 'quit'}))
         try:
             self.stream.close()
             self.sock.close()
         except:
-            mgr_logger.debug('Exception while closing:')
-            import traceback
-            mgr_logger.debug(traceback.format_exc())
+            logger.debug('Exception while destroying reference:')
+            logger.debug(traceback.format_exc())
 
     def destroy_queue(self):
+        """
+        Delete the queue in the manager pointed by this reference, and
+        delete the reference.
+        """
         write_to(self.stream, json.dumps({'cmd': 'del',
-                                    'name': self.name}), sock=self.sock)
+                                    'name': self.name}))
         self.destroy_ref()
 
     def qsize(self):
         write_to(self.stream, json.dumps({'cmd': 'size',
-                                    'name': self.name}), sock=self.sock)
+                                    'name': self.name}))
         try:
-            ret = json.loads(readline_from(self.stream, sock=self.sock))
+            ret = json.loads(readline_from(self.stream))
         except ValueError:
             return False
         if ret['status']:
@@ -259,9 +263,9 @@ class QueueRef(object):
 
     def flush(self):
         write_to(self.stream, json.dumps({'cmd': 'flush',
-                                    'name': self.name}), sock=self.sock)
+                                    'name': self.name}))
         try:
-            ret = json.loads(readline_from(self.stream, sock=self.sock))
+            ret = json.loads(readline_from(self.stream))
         except ValueError:
             return False
         if ret['status']:
@@ -270,46 +274,33 @@ class QueueRef(object):
             raise QueueError(ret)
 
     def stats(self):
-        write_to(self.stream, json.dumps({'cmd': 'stats'}), sock=self.sock)
+        write_to(self.stream, json.dumps({'cmd': 'stats'}))
 
     def report(self):
-        write_to(self.stream, json.dumps({'cmd': 'report'}), sock=self.sock)
+        write_to(self.stream, json.dumps({'cmd': 'report'}))
 
-def write_to(stream, data, sock=None, retries=3, sleep_func=time.sleep):
+def write_to(stream, data):
     """
     Send data to a socket, retrying if necessary
     """
     try:
-        try:
-            address = '%s writes to %s' %(sock.getsockname(), sock.getpeername())
-        except:
-            address = '...'
-        mgr_logger.debug('[%s] %s' %(address, data))
         stream.write(data+'\n')
     except socket.error as exc:
         if exc.errno in (errno.EPIPE, errno.ECONNRESET):
-            mgr_logger.debug('Got broken pipe when I was about to write: %s' %(data,))
+            logger.debug('Got broken pipe when I was about to write: %s' %(data,))
         else:
-            mgr_logger.debug('socket.error: %s' %(exc.errno,))
-        import traceback
-        mgr_logger.debug(traceback.format_exc())
+            logger.debug('socket.error: %s' %(exc.errno,))
+        logger.debug(traceback.format_exc())
     except:
-        mgr_logger.debug('Was about to write: %s' %(data,))
-        import traceback
-        mgr_logger.debug(traceback.format_exc())
+        logger.debug('Was about to write: %s' %(data,))
+        logger.debug(traceback.format_exc())
 
-def readline_from(stream, sock=None, retries=3):
+def readline_from(stream):
     try:
-        try:
-            address = 'from %s reads into %s' %(sock.getpeername(), sock.getsockname())
-        except:
-            address = '...'
         x = stream.readline()   
-        mgr_logger.debug('[%s] %s' %(address, x))
         return x 
     except:
-        mgr_logger.debug('got this while reading')
-        import traceback
-        mgr_logger.debug(traceback.format_exc())
+        logger.debug('got this while reading')
+        logger.debug(traceback.format_exc())
         return ''
 
