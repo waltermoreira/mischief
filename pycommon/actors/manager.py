@@ -87,7 +87,7 @@ class Manager(object):
     def _cmd_get(self, stream, obj):
         timeout = obj.get('timeout', None)
         res = self.get(obj['name'], timeout=timeout)
-        write_to(stream, json.dumps(res) + '\n')
+        write_to(stream, json.dumps(res))
 
     def _cmd_quit(self, stream, obj):
         # finish the greenlet attending this socket
@@ -111,11 +111,11 @@ class Manager(object):
 
     def _cmd_size(self, stream, obj):
         res = self.size(obj['name'])
-        write_to(stream, json.dumps(res) + '\n')
+        write_to(stream, json.dumps(res))
 
     def _cmd_flush(self, stream, obj):
         self.flush(obj['name'])
-        write_to(stream, json.dumps({'status': True}) + '\n')
+        write_to(stream, json.dumps({'status': True}))
 
     def _cmd_stop_server(self, stream, obj):
         self.server.stop()
@@ -128,11 +128,11 @@ class Manager(object):
     def _cmd_get_report(self, stream, obj):
         # return report to output stream (for debugging)
         report = self.get_report()
-        write_to(stream, json.dumps(report) + '\n')
+        write_to(stream, json.dumps(report))
 
     def _cmd_unknown(self, stream, obj):
         write_to(stream, json.dumps({'status': False,
-                                     'type': 'unknown_cmd'}) + '\n')
+                                     'type': 'unknown_cmd'}))
         
     def handle_request(self, sock, address):
         self.conns += 1
@@ -153,7 +153,7 @@ class Manager(object):
                     write_to(stream, json.dumps({'status': False,
                                                  'type': 'not_a_json',
                                                  'msg': exc.message,
-                                                 'line': line}) + '\n',
+                                                 'line': line}),
                              sock=sock)
                     return
                 except StopIteration:
@@ -205,17 +205,20 @@ class QueueRef(object):
         self.sock = py_socket.create_connection(address)
         self.stream = self.sock.makefile('w', 0)
         write_to(self.stream, json.dumps({'cmd': 'touch',
-                                    'name': self.name}) + '\n', sock=self.sock)
+                                          'name': self.name}),
+            sock=self.sock)
         
     def put(self, obj):
         write_to(self.stream, json.dumps({'cmd': 'put',
-                                    'name': self.name,
-                                    'arg': obj}) + '\n', sock=self.sock)
+                                          'name': self.name,
+                                          'arg': obj
+                                          }),
+            sock=self.sock)
 
     def get(self, timeout=None):
         write_to(self.stream, json.dumps({'cmd': 'get',
                                     'timeout': timeout,
-                                    'name': self.name}) + '\n', sock=self.sock)
+                                    'name': self.name}), sock=self.sock)
         try:
             ret = json.loads(readline_from(self.stream, sock=self.sock))
         except ValueError:
@@ -228,7 +231,7 @@ class QueueRef(object):
             raise QueueError(ret)
     
     def destroy_ref(self):
-        write_to(self.stream, json.dumps({'cmd': 'quit'}) + '\n', sock=self.sock)
+        write_to(self.stream, json.dumps({'cmd': 'quit'}), sock=self.sock)
         try:
             self.stream.close()
             self.sock.close()
@@ -239,12 +242,12 @@ class QueueRef(object):
 
     def destroy_queue(self):
         write_to(self.stream, json.dumps({'cmd': 'del',
-                                    'name': self.name}) + '\n', sock=self.sock)
+                                    'name': self.name}), sock=self.sock)
         self.destroy_ref()
 
     def qsize(self):
         write_to(self.stream, json.dumps({'cmd': 'size',
-                                    'name': self.name}) + '\n', sock=self.sock)
+                                    'name': self.name}), sock=self.sock)
         try:
             ret = json.loads(readline_from(self.stream, sock=self.sock))
         except ValueError:
@@ -256,7 +259,7 @@ class QueueRef(object):
 
     def flush(self):
         write_to(self.stream, json.dumps({'cmd': 'flush',
-                                    'name': self.name}) + '\n', sock=self.sock)
+                                    'name': self.name}), sock=self.sock)
         try:
             ret = json.loads(readline_from(self.stream, sock=self.sock))
         except ValueError:
@@ -267,10 +270,10 @@ class QueueRef(object):
             raise QueueError(ret)
 
     def stats(self):
-        write_to(self.stream, json.dumps({'cmd': 'stats'}) + '\n', sock=self.sock)
+        write_to(self.stream, json.dumps({'cmd': 'stats'}), sock=self.sock)
 
     def report(self):
-        write_to(self.stream, json.dumps({'cmd': 'report'}) + '\n', sock=self.sock)
+        write_to(self.stream, json.dumps({'cmd': 'report'}), sock=self.sock)
 
 def write_to(stream, data, sock=None, retries=3, sleep_func=time.sleep):
     """
@@ -282,7 +285,7 @@ def write_to(stream, data, sock=None, retries=3, sleep_func=time.sleep):
         except:
             address = '...'
         mgr_logger.debug('[%s] %s' %(address, data))
-        stream.write(data)
+        stream.write(data+'\n')
     except socket.error as exc:
         if exc.errno in (errno.EPIPE, errno.ECONNRESET):
             mgr_logger.debug('Got broken pipe when I was about to write: %s' %(data,))
