@@ -56,11 +56,17 @@ class Manager(object):
         except (py_socket.error, IOError):
             # Errors mean the connection is NOT alive
             return False
-        
+
+    def _serve_forever(self):
+        try:
+            self.server.serve_forever()
+        except KeyboardInterrupt:
+            print 'Manager received Control-C. Quitting...'
+            
     def start(self):
         if self._is_alive():
             return
-        server_proc = multiprocessing.Process(target=self.server.serve_forever)
+        server_proc = multiprocessing.Process(target=self._serve_forever)
         server_proc.daemon = True
         server_proc.start()
         while not self._is_alive():
