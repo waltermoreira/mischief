@@ -36,18 +36,12 @@ import signal
 import time
 import uuid
 import socket
+from pycommon import log
 
 # multiproc_logger = m.log_to_stderr()
 # multiproc_logger.setLevel(m.SUBDEBUG)
 
-file_logger = logging.getLogger('file')
-actor_logger = logging.getLogger('actor')
-handler = logging.handlers.RotatingFileHandler(os.path.join(os.environ['HET2_DEPLOY'], 'log/gui', 'actor.log'))
-formatter = logging.Formatter("%(asctime)s %(levelname)-8s [%(filename)30s:%(lineno)-4s] - %(message)s")
-handler.setFormatter(formatter)
-actor_logger.addHandler(handler)
-actor_logger.setLevel(logging.DEBUG)
-
+logger = log.setup('actor', 'to_console')
         
 class ActorRef(object):
     """
@@ -85,6 +79,7 @@ class ActorRef(object):
 
     def __del__(self):
         try:
+            logger.debug('Finalizing actor_ref for %s' %self.name)
             self.destroy_ref()
         except:
             pass
@@ -104,16 +99,17 @@ class Actor(object):
     def __init__(self, name=None, prefix=''):
         self.name = name or ('actor_' + prefix + '_' +
                              str(uuid.uuid1().hex))
-        actor_logger.debug('[Actor %s] creating my inbox' %(self.name,))
+        logger.debug('[Actor %s] creating my inbox' %(self.name,))
         self.inbox = manager.QueueRef(self.name)
-        actor_logger.debug('[Actor %s] getting the created inbox' %(self.name,))
+        logger.debug('[Actor %s] getting the created inbox' %(self.name,))
         if self.name == 'hardware':
             self.my_log = lambda *args, **kwargs: None
         else:
-            self.my_log = actor_logger.debug
+            self.my_log = logger.debug
 
     def __del__(self):
         try:
+            logger.debug('Finalizing actor %s' %self.name)
             self.destroy_actor()
         except:
             pass
@@ -172,7 +168,7 @@ class Actor(object):
                 msg = self.inbox.get(timeout=inbox_polling)
                 checked_objects += 1
                 if type(msg) != dict:
-                    actor_logger.debug('[Actor %s] got msg: %s' %(self.name, msg))
+                    logger.debug('[Actor %s] got msg: %s' %(self.name, msg))
                 self.my_log('[Actor %s] got object: %s' %(self.name, msg))
                 self.my_log('[...     ] in receive: %s' %(patterns,))
             except Queue.Empty:
@@ -220,7 +216,7 @@ class FastActor(Actor):
 
     def __init__(self, name=None, prefix=''):
         super(FastActor, self).__init__(name=name, prefix=prefix)
-        actor_logger.debug('[%s] Fast actor created' %self.name[:30])
+        logger.debug('[%s] Fast actor created' %self.name[:30])
         self.external = self.inbox
         self.inbox = Queue.Queue()
         self.t = threading.Thread(target=self.copy_to_internal)
@@ -237,12 +233,12 @@ class FastActor(Actor):
                 x = self.external.get()
                 # getting None means we want to refresh the inbox by flushing everything
                 if x is None:
-                    actor_logger.debug('Thread got None. Refreshing queue')
+                    logger.debug('Thread got None. Refreshing queue')
                     self.external.flush()
                     self.inbox = Queue.Queue()
                 # getting False means that the socket is closing, just leave so the thread finishes
                 elif x is False:
-                    actor_logger.debug('Thread got False')
+                    logger.debug('Thread got False')
                     return
                 else:
                     self.inbox.put(x)
