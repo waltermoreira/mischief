@@ -74,6 +74,59 @@ class Manager(object):
         except (py_socket.error, IOError):
             # Ignore socket errors when stopping
             pass
+
+    def _cmd_put(self, stream, obj):
+        self.put(obj['name'], obj['arg'])
+
+    def _cmd_get(self, stream, obj):
+        timeout = obj.get('timeout', None)
+        res = self.get(obj['name'], timeout=timeout)
+        write_to(stream, json.dumps(res) + '\n')
+
+    def _cmd_quit(self, stream, obj):
+        # finish the greenlet attending this socket
+        raise StopIteration
+
+    def _cmd_del(self, stream, obj):
+        try:
+            # send None to the queue to help it clean any thread that
+            # is reading the queue
+            self.queues[obj['name']].put(None)
+            del self.queues[obj['name']]
+        except KeyError:
+            # ignore if the queue is already removed
+            pass
+
+    def _cmd_touch(self, stream, obj):
+        self.touch(obj['name'])
+
+    def _cmd_stats(self, stream, obj):
+        self.stats()
+
+    def _cmd_size(self, stream, obj):
+        res = self.size(obj['name'])
+        write_to(stream, json.dumps(res) + '\n')
+
+    def _cmd_flush(self, stream, obj):
+        self.flush(obj['name'])
+        write_to(stream, json.dumps({'status': True}) + '\n')
+
+    def _cmd_stop_server(self, stream, obj):
+        self.server.stop()
+        return
+
+    def _cmd_report(self, stream, obj):
+        # print report to screen
+        self.report()
+
+    def _cmd_get_report(self, stream, obj):
+        # return report to output stream (for debugging)
+        report = self.get_report()
+        write_to(stream, json.dumps(report) + '\n')
+
+    def _cmd_unknown(self, stream, obj):
+        write_to(stream, json.dumps({'status': False,
+                                     'type': 'unknown_cmd'}) + '\n')
         
     def handle_request(self, sock, address):
         self.conns += 1
@@ -86,69 +139,19 @@ class Manager(object):
                     if not line:
                         return
                     obj = json.loads(line)
-                except socket.error as exc:
-                    # If we get a 'connection reset by peer' it means
-                    # the actor is finishing while doing some
-                    # request. We ignore it.
-                    if exc.errno == errno.ECONNRESET:
-                        import traceback
-                        print '-- Connection reset by peer'
-                        print traceback.format_exc()
-                        # if obj is not none, do not ignore the
-                        # message
-                        if obj is None:
-                            print '-- Message is empty. Ignoring...'
-                            return
-                        print '-- Will process message:', obj
-                    else:
-                        # raise any socket.error other than
-                        # 'connection reset by peer'
-                        raise
+                    cmd = obj['cmd']
+                    cmd_f = getattr(self, '_cmd_%s' %cmd, self._cmd_unknown)
+                    cmd_f(stream, obj)
                 except ValueError as exc:
                     # wrong json object
-                    try:
-                        write_to(stream, json.dumps({'status': False,
-                                                 'type': 'not_a_json',
-                                                 'msg': exc.message}) + '\n', sock=sock)
-                    except:
-                        pass
-                    return
-                cmd = obj['cmd']
-                if cmd == 'put':
-                    self.put(obj['name'], obj['arg'])
-                elif cmd == 'get':
-                    timeout = obj.get('timeout', None)
-                    res = self.get(obj['name'], timeout=timeout)
-                    write_to(stream, json.dumps(res) + '\n', sock=sock)
-                elif cmd == 'quit':
-                    return
-                elif cmd == 'del':
-                    try:
-                        self.queues[obj['name']].put(None)
-                        del self.queues[obj['name']]
-                    except KeyError:
-                        pass
-                elif cmd == 'touch':
-                    self.touch(obj['name'])
-                elif cmd == 'stats':
-                    self.stats()
-                elif cmd == 'size':
-                    res = self.size(obj['name'])
-                    write_to(stream, json.dumps(res) + '\n', sock=sock)
-                elif cmd == 'flush':
-                    self.flush(obj['name'])
-                    write_to(stream, json.dumps({'status': True}) + '\n', sock=sock)
-                elif cmd == 'stop_server':
-                    self.server.stop()
-                    return
-                elif cmd == 'report':
-                    self.report()
-                elif cmd == 'get_report':
-                    report = self.get_report()
-                    write_to(stream, json.dumps(report) + '\n', sock=sock)
-                else:
                     write_to(stream, json.dumps({'status': False,
-                                             'type': 'unknown_cmd'}) + '\n', sock=sock)
+                                                 'type': 'not_a_json',
+                                                 'msg': exc.message,
+                                                 'line': line}) + '\n',
+                             sock=sock)
+                    return
+                except StopIteration:
+                    return
         finally:
             self.conns -= 1
 
@@ -300,3 +303,4 @@ def readline_from(stream, sock=None, retries=3):
         import traceback
         mgr_logger.debug(traceback.format_exc())
         return ''
+
