@@ -72,9 +72,9 @@ def setup_log(mod_name, deploy_dir):
         # if the file logger has handlers, it means they are all
         # already configured
         return
-    LOGGER_DEBUG = logging.getLogger(mod_name+'.file.console')
-    LOGGER_LOGGER = logging.getLogger(mod_name+'.file.logger')
-    LOGGER_FULL = logging.getLogger(mod_name+'.file.full')
+    LOGGER_DEBUG = logging.getLogger(mod_name+'.console')
+    LOGGER_LOGGER = logging.getLogger(mod_name+'.logger')
+    LOGGER_FULL = logging.getLogger(mod_name+'.full')
 
     path = os.path.join(deploy_dir, 'log', mod_name)
     try:
@@ -117,9 +117,9 @@ def setup(mod_name, to_where='to_everywhere'):
     path = os.environ['HET2_DEPLOY']
     setup_log(mod_name, path)
     destinations = {'to_file': 'file',
-                    'to_console': 'file.console',
-                    'to_logger': 'file.logger',
-                    'to_everywhere': 'file.full'}
+                    'to_console': 'console',
+                    'to_logger': 'logger',
+                    'to_everywhere': 'full'}
     return logging.getLogger(mod_name+'.'+destinations[to_where])
     
 def test(s):
