@@ -155,7 +155,9 @@ class Actor(object):
         starting_size = self.inbox.qsize()
         checked_objects = 0
         while True:
-            if checked_objects >= starting_size and timeout is not None and current_time > start_time + timeout:
+            if (checked_objects >= starting_size
+                    and timeout is not None
+                    and current_time > start_time + timeout):
                 matched = 'timeout'
                 break
             current_time = time.time()
