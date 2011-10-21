@@ -2,6 +2,7 @@ from gevent import spawn, socket
 from gevent.server import StreamServer
 from gevent.queue import Queue, Empty
 from gevent.coros import RLock
+from textwrap import dedent
 import traceback
 import multiprocessing
 import json
@@ -14,6 +15,7 @@ import os
 (IP, PORT) = config.get_manager_address()
 
 logger = log.setup('manager', 'to_console')
+logger.disabled = False
 
 class Manager(object):
 
@@ -198,10 +200,29 @@ class QueueError(Exception):
 
 class QueueRef(object):
 
+    RETRIES = 50
+    SLEEP = 0.1 # seconds
+    
     def __init__(self, name, address=(IP, PORT)):
         self.name = name
-        self.sock = py_socket.create_connection(address)
-        self.stream = self.sock.makefile('w', 0)
+        for i in range(self.RETRIES):
+            try:
+                self.sock = py_socket.create_connection(address)
+                self.stream = self.sock.makefile('w', 0)
+                # connection to manager was successful
+                # leave the ``for`` loop
+                break
+            except py_socket.error:
+                # Cannot connect to manager, keep trying
+                logger.debug('No connection, retrying time: %d' %i)
+                time.sleep(self.SLEEP)
+        else:
+            raise QueueError(dedent(
+            """Couldn't connect to manager at %s:%s
+                   Make sure a manager is running and check the file:
+                   '%s/etc/actors.conf'
+                   to configure the host and port.
+            """ %(IP, PORT, os.environ['HET2_DEPLOY'])))
         write_to(self.stream, json.dumps({'cmd': 'touch',
                                           'name': self.name}))
         
