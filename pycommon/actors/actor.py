@@ -224,6 +224,15 @@ class ThreadedActor(Actor):
         self.thread.start()
 
 class FastActor(Actor):
+    """
+    A fast actor replaces its inbox (which is a connection to a queue
+    in the manager) by a local queue, and starts a thread to read from
+    manager into this new local queue.
+
+    The ``receive`` function then reads from the local queue, which is
+    faster.  The drawback is that we have to keep an additional
+    thread.
+    """
 
     def __init__(self, name=None, prefix=''):
         super(FastActor, self).__init__(name=name, prefix=prefix)
@@ -242,12 +251,14 @@ class FastActor(Actor):
         try:
             while True:
                 x = self.external.get()
-                # getting None means we want to refresh the inbox by flushing everything
+                # getting None means we want to refresh the inbox by
+                # flushing everything
                 if x is None:
                     logger.debug('Thread got None. Refreshing queue')
                     self.external.flush()
                     self.inbox = Queue.Queue()
-                # getting False means that the socket is closing, just leave so the thread finishes
+                # getting False means that the socket is closing, just
+                # leave so the thread finishes
                 elif x is False:
                     logger.debug('Thread got False')
                     return
