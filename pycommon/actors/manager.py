@@ -200,7 +200,7 @@ class QueueError(Exception):
 
 class QueueRef(object):
 
-    RETRIES = 50
+    RETRIES = 20
     SLEEP = 0.1 # seconds
     
     def __init__(self, name, address=(IP, PORT)):
