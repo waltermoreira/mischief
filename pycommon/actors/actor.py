@@ -42,7 +42,8 @@ from pycommon import log
 # multiproc_logger.setLevel(m.SUBDEBUG)
 
 logger = log.setup('actor', 'to_console')
-        
+logger.disabled = False
+
 class ActorRef(object):
     """
     An actor reference.
@@ -175,7 +176,10 @@ class Actor(object):
                 continue
             try:
                 if not msg:
-                    # get a refreshed inbox and keep reading
+                    # Get a refreshed inbox and keep reading.  This
+                    # may fail if the reason we lost connection is
+                    # because the manager is stopping (for example
+                    # when quitting the application).
                     self.inbox = manager.QueueRef(self.name)
                     continue
                 if msg['tag'] in patterns:
@@ -268,4 +272,8 @@ class FastActor(Actor):
             # when actor dies, queue will get eof
             # just leave
             pass
+        
+class Test(Actor):
+    def act(self):
+        self.receive({'foo': lambda *args: None})
         
