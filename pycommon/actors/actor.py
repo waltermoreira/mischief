@@ -172,12 +172,21 @@ class Actor(object):
             except Queue.Empty:
                 self.my_log('[Actor %s] empty inbox' %(self.name,))
                 continue
-            if msg['tag'] in patterns:
-                matched = msg['tag']
-                break
-            if '*' in patterns:
-                matched = '*'
-                break
+            try:
+                if not msg:
+                    # get a refreshed inbox and keep reading
+                    self.inbox = manager.QueueRef(self.name)
+                    continue
+                if msg['tag'] in patterns:
+                    matched = msg['tag']
+                    break
+                if '*' in patterns:
+                    matched = '*'
+                    break
+            except (KeyError, TypeError):
+                logger.debug('Wrong message object: %s' %(msg,))
+                logger.debug('  discarding object...')
+                continue
             processed.put(msg)
         while not processed.empty():
             x = processed.get()
