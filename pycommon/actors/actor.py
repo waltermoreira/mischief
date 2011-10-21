@@ -155,6 +155,8 @@ class Actor(object):
         starting_size = self.inbox.qsize()
         checked_objects = 0
         while True:
+            # Process any pre-existing objects in the queue, before
+            # starting to consider the timeout
             if (checked_objects >= starting_size
                     and timeout is not None
                     and current_time > start_time + timeout):
@@ -162,11 +164,10 @@ class Actor(object):
                 break
             current_time = time.time()
             try:
-                self.my_log('[Actor %s] checking inbox with timeout: %s'%(self.name, inbox_polling))
+                self.my_log('[Actor %s] checking inbox with timeout:'
+                            '%s' %(self.name, inbox_polling))
                 msg = self.inbox.get(timeout=inbox_polling)
                 checked_objects += 1
-                if type(msg) != dict:
-                    logger.debug('[Actor %s] got msg: %s' %(self.name, msg))
                 self.my_log('[Actor %s] got object: %s' %(self.name, msg))
                 self.my_log('[...     ] in receive: %s' %(patterns,))
             except Queue.Empty:
@@ -187,7 +188,10 @@ class Actor(object):
                 logger.debug('Wrong message object: %s' %(msg,))
                 logger.debug('  discarding object...')
                 continue
+            # the object 'msg' was not matched, save it so we can
+            # return it to the inbox
             processed.put(msg)
+        # Return all unmatched objects to the inbox
         while not processed.empty():
             x = processed.get()
             self.inbox.put(x)
