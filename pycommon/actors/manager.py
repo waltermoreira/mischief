@@ -306,22 +306,14 @@ def write_to(stream, data):
     """
     try:
         stream.write(data+'\n')
-    except socket.error as exc:
-        if exc.errno in (errno.EPIPE, errno.ECONNRESET):
-            logger.debug('Got broken pipe when I was about to write: %s' %(data,))
-        else:
-            logger.debug('socket.error: %s' %(exc.errno,))
-        logger.debug(traceback.format_exc())
     except:
-        logger.debug('Was about to write: %s' %(data,))
-        logger.debug(traceback.format_exc())
+        logger.debug('Socket closed when writing: %s' %(data,))
 
 def readline_from(stream):
     try:
         x = stream.readline()   
         return x 
     except:
-        logger.debug('got this while reading')
-        logger.debug(traceback.format_exc())
+        logger.debug('socket closed while reading')
         return ''
 
