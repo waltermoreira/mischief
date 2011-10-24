@@ -15,7 +15,6 @@ import os
 (IP, PORT) = config.get_manager_address()
 
 logger = log.setup('manager', 'to_console')
-logger.disabled = False
 
 class Manager(object):
 

@@ -11,6 +11,7 @@ import json
 import itertools
 import re
 import gui.config as config
+from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
@@ -72,6 +73,15 @@ def setup_log(mod_name, deploy_dir):
         # if the file logger has handlers, it means they are all
         # already configured
         return
+
+    conf_file = os.path.join(os.environ['HET2_DEPLOY'], 'etc/actors.conf')
+    c = ConfigParser()
+    res = c.read(conf_file)
+    try:
+        disabled = not c.getboolean('logging', 'enabled')
+    except (NoSectionError, NoOptionError):
+        disabled = False
+    
     LOGGER_DEBUG = logging.getLogger(mod_name+'.console')
     LOGGER_LOGGER = logging.getLogger(mod_name+'.logger')
     LOGGER_FULL = logging.getLogger(mod_name+'.full')
@@ -99,19 +109,23 @@ def setup_log(mod_name, deploy_dir):
     
     LOGGER_FILE.addHandler(file_handler)
     LOGGER_FILE.setLevel(logging.DEBUG)
-
+    LOGGER_FILE.disabled = disabled
+    
     LOGGER_DEBUG.addHandler(file_handler)
     LOGGER_DEBUG.addHandler(console_handler)
     LOGGER_DEBUG.setLevel(logging.DEBUG)
+    LOGGER_DEBUG.disabled = disabled
 
     LOGGER_LOGGER.addHandler(file_handler)
     LOGGER_LOGGER.addHandler(socket_handler)
     LOGGER_LOGGER.setLevel(logging.DEBUG)
+    LOGGER_LOGGER.disabled = disabled
 
     LOGGER_FULL.addHandler(file_handler)
     LOGGER_FULL.addHandler(console_handler)
     LOGGER_FULL.addHandler(socket_handler)
     LOGGER_FULL.setLevel(logging.DEBUG)
+    LOGGER_FULL.disabled = disabled
 
 def setup(mod_name, to_where='to_everywhere'):
     path = os.environ['HET2_DEPLOY']

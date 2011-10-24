@@ -42,7 +42,6 @@ from pycommon import log
 # multiproc_logger.setLevel(m.SUBDEBUG)
 
 logger = log.setup('actor', 'to_console')
-logger.disabled = False
 
 class ActorRef(object):
     """

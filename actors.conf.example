@@ -5,3 +5,10 @@
 #
 # host = localhost
 # port = 5123
+
+[logging]
+
+# Logging debug messages of actors goes to file and console.
+# It may produce a high volume of messages, disable this in production or when
+# low in disk space
+enabled = true
