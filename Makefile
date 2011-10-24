@@ -11,6 +11,7 @@ test:
 
 install:
 	python setup.py install --prefix=$(HET2_DEPLOY)
+	cp actors.conf.example $(HET2_DEPLOY)/etc
 
 uninstall:
 	rm -rf $(HET2_DEPLOY)/lib/python$(PYTHON_VERSION)/site-packages/pycommon
