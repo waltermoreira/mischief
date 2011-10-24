@@ -92,6 +92,7 @@ class Manager(object):
         try:
             # send None to the queue to help it clean any thread that
             # is reading the queue
+            logger.debug('Deleting queue %s' %(obj['name'],))
             self.queues[obj['name']].put(None)
             del self.queues[obj['name']]
         except KeyError:
