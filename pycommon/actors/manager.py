@@ -66,6 +66,7 @@ class Manager(object):
         server_proc.start()
         while not self._is_alive():
             time.sleep(0.1)
+        logger.debug('>>> Manager started with pid: %s' %(server_proc.pid,))
         return server_proc
 
     def stop(self):
@@ -191,9 +192,9 @@ class Manager(object):
                 'result': q.qsize()}
         
     def stats(self):
-        print 'num queues', len(self.queues)
-        print 'num connections', self.conns
-        print 'queues:', self.queues.keys()
+        logger.debug('num queues: %s' %(len(self.queues),))
+        logger.debug('num connections: %s' %(self.conns,))
+        logger.debug('queues: %s' %(self.queues.keys(),))
         
 class QueueError(Exception):
     pass
@@ -208,6 +209,7 @@ class QueueRef(object):
         for i in range(self.RETRIES):
             try:
                 self.sock = py_socket.create_connection(address)
+                logger.debug('client at: %s' %(self.sock.getsockname(),))
                 self.stream = self.sock.makefile('w', 0)
                 # connection to manager was successful
                 # leave the ``for`` loop
@@ -215,8 +217,13 @@ class QueueRef(object):
             except py_socket.error:
                 # Cannot connect to manager, keep trying
                 logger.debug('No connection, retrying time: %d' %i)
+                logger.debug(' address = %s' %(address,))
+                logger.debug(' socker error was:')
+                logger.debug(traceback.format_exc())
                 time.sleep(self.SLEEP)
         else:
+            logger.debug('>>>>>>>> Lost connection to manager')
+            logger.debug(traceback.format_exc())
             raise QueueError(dedent(
             """Couldn't connect to manager at %s:%s
                    Make sure a manager is running and check the file:

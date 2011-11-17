@@ -102,7 +102,7 @@ class Actor(object):
         logger.debug('[Actor %s] creating my inbox' %(self.name,))
         self.inbox = manager.QueueRef(self.name)
         logger.debug('[Actor %s] getting the created inbox' %(self.name,))
-        if self.name == 'hardware':
+        if self.name == 'hardware' or self.name.startswith('actor_ScriptWorker_'):
             self.my_log = lambda *args, **kwargs: None
         else:
             self.my_log = logger.debug
