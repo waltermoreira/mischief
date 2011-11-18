@@ -1,4 +1,4 @@
-from gevent import spawn, socket
+from gevent import spawn, socket, sleep
 from gevent.server import StreamServer
 from gevent.queue import Queue, Empty
 from gevent.coros import RLock
@@ -12,14 +12,27 @@ import errno
 from pycommon import config, log
 import os
 
-(IP, PORT) = config.get_manager_address()
+MANAGER_ADDRESS = '/tmp/manager'
 
 logger = log.setup('manager', 'to_console')
 
+def read_pipe_ref(stream):
+    return os.fdopen(
+        os.open(stream, os.O_RDONLY | os.O_NONBLOCK))
+
+def write_pipe_ref(stream):
+    return os.fdopen(
+        os.open(stream, os.O_WRONLY))
+    
+    
 class Manager(object):
 
     def __init__(self, address=(IP, PORT)):
-        self.server = StreamServer(address, self.handle_request)
+        os.mkfifo(MANAGER_ADDRESS)
+        self.server = read_pipe_ref(MANAGER_ADDRESS)
+        # open dummy file descriptor to avoid getting an EOF
+        self.dummy = write_pipe_ref(MANAGER_ADDRESS)
+
         self.queues = {}
         self.conns = 0
         self.connections = {}
@@ -54,7 +67,12 @@ class Manager(object):
 
     def _serve_forever(self):
         try:
-            self.server.serve_forever()
+            while True:
+                data = self.server.readline()
+                if not data:
+                    sleep(0.01)
+                    continue
+                spawn(self.handle_request, data)
         except KeyboardInterrupt:
             print 'Manager received Control-C. Quitting...'
             
@@ -132,29 +150,24 @@ class Manager(object):
         write_to(stream, json.dumps({'status': False,
                                      'type': 'unknown_cmd'}))
         
-    def handle_request(self, sock, address):
+    def handle_request(self, data_json):
         self.conns += 1
-        stream = sock.makefile('w', bufsize=0)
         try:
-            while True:
-                obj = None
-                try:
-                    line = readline_from(stream)
-                    if not line:
-                        return
-                    obj = json.loads(line)
-                    cmd = obj['cmd']
-                    cmd_f = getattr(self, '_cmd_%s' %cmd, self._cmd_unknown)
-                    cmd_f(stream, obj)
-                except ValueError as exc:
-                    # wrong json object
-                    write_to(stream, json.dumps({'status': False,
-                                                 'type': 'not_a_json',
-                                                 'msg': exc.message,
-                                                 'line': line}))
-                    return
-                except StopIteration:
-                    return
+            data = json.loads(data_json)
+            obj = data['payload']
+            stream = write_pipe_ref(data['pipe'])
+
+            cmd = obj['cmd']
+            cmd_f = getattr(self, '_cmd_%s' %cmd, self._cmd_unknown)
+            cmd_f(stream, obj)
+        except ValueError as exc:
+            # wrong json object
+            write_to(stream, json.dumps({'status': False,
+                                         'type': 'not_a_json',
+                                         'msg': exc.message,
+                                         'line': data_json}))
+        except StopIteration:
+            pass
         finally:
             self.conns -= 1
 
@@ -206,6 +219,7 @@ class QueueRef(object):
     
     def __init__(self, name, address=(IP, PORT)):
         self.name = name
+        # TODO create fifo with name = name
         for i in range(self.RETRIES):
             try:
                 self.sock = py_socket.create_connection(address)
@@ -233,18 +247,23 @@ class QueueRef(object):
         write_to(self.stream, json.dumps({'cmd': 'touch',
                                           'name': self.name}))
         
+    def write_to_manager(self, data):
+        pass
+
+    def read_from_manager(self):
+        pass
+        
     def put(self, obj):
-        write_to(self.stream, json.dumps({'cmd': 'put',
-                                          'name': self.name,
-                                          'arg': obj
-                                          }))
+        self.write_to_manager({'cmd': 'put',
+                               'name': self.name,
+                               'arg': obj})
 
     def get(self, timeout=None):
-        write_to(self.stream, json.dumps({'cmd': 'get',
-                                    'timeout': timeout,
-                                    'name': self.name}))
+        self.write_to_manager({'cmd': 'get',
+                               'timeout': timeout,
+                               'name': self.name})
         try:
-            ret = json.loads(readline_from(self.stream))
+            ret = self.read_from_manager()
         except ValueError:
             return False
         if ret['status']:
@@ -260,28 +279,28 @@ class QueueRef(object):
         queue. We close the client socket too, to be sure we don't
         leak open descriptors.
         """
-        write_to(self.stream, json.dumps({'cmd': 'quit'}))
-        try:
-            self.stream.close()
-            self.sock.close()
-        except:
-            logger.debug('Exception while destroying reference:')
-            logger.debug(traceback.format_exc())
+        self.write_to_manager({'cmd': 'quit'})
+        # try:
+        #     self.stream.close()
+        #     self.sock.close()
+        # except:
+        #     logger.debug('Exception while destroying reference:')
+        #     logger.debug(traceback.format_exc())
 
     def destroy_queue(self):
         """
         Delete the queue in the manager pointed by this reference, and
         delete the reference.
         """
-        write_to(self.stream, json.dumps({'cmd': 'del',
-                                    'name': self.name}))
+        self.write_to_manager({'cmd': 'del',
+                               'name': self.name})
         self.destroy_ref()
 
     def qsize(self):
-        write_to(self.stream, json.dumps({'cmd': 'size',
-                                    'name': self.name}))
+        self.write_to_manager({'cmd': 'size',
+                               'name': self.name})
         try:
-            ret = json.loads(readline_from(self.stream))
+            ret = self.read_from_manager()
         except ValueError:
             return False
         if ret['status']:
@@ -290,10 +309,10 @@ class QueueRef(object):
             raise QueueError(ret)
 
     def flush(self):
-        write_to(self.stream, json.dumps({'cmd': 'flush',
-                                    'name': self.name}))
+        self.write_to_manager({'cmd': 'flush',
+                               'name': self.name})
         try:
-            ret = json.loads(readline_from(self.stream))
+            ret = self.read_from_manager()
         except ValueError:
             return False
         if ret['status']:
@@ -302,10 +321,10 @@ class QueueRef(object):
             raise QueueError(ret)
 
     def stats(self):
-        write_to(self.stream, json.dumps({'cmd': 'stats'}))
+        self.write_to_manager({'cmd': 'stats'})
 
     def report(self):
-        write_to(self.stream, json.dumps({'cmd': 'report'}))
+        self.write_to_manager({'cmd': 'report'})
 
 def write_to(stream, data):
     """
@@ -318,7 +337,8 @@ def write_to(stream, data):
 
 def readline_from(stream):
     try:
-        x = stream.readline()   
+        pipe = read_pipe_ref(stream)
+        x = pipe.readline()   
         return x 
     except:
         logger.debug('socket closed while reading')
