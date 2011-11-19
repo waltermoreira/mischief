@@ -12,26 +12,72 @@ import errno
 from pycommon import config, log
 import os
 
-MANAGER_ADDRESS = '/tmp/manager'
+MANAGER_ADDRESS = 'manager'
 
 logger = log.setup('manager', 'to_console')
 
-def read_pipe_ref(stream):
-    return os.fdopen(
-        os.open(stream, os.O_RDONLY | os.O_NONBLOCK))
+class Pipe(object):
 
-def write_pipe_ref(stream):
-    return os.fdopen(
-        os.open(stream, os.O_WRONLY))
+    def __init__(self, name):
+        self.path = self._path_to(name)
+        if not os.path.exists(self.path):
+            os.mkfifo(self.path)
+        self.fd = None
+        self._aux_fd = None
+        self.open_for = None
+
+    def write(self, data):
+        if self.open_for == 'read':
+            raise Exception('pipe already open for reading')
+        if self.open_for is None:
+            self._open_write_pipe()
+        self.fd.write(json.dumps(data)+'\n')
+
+    def read(self):
+        if self.open_for == 'write':
+            raise Exception('pipe already open for writing')
+        if self.open_for is None:
+            self._open_read_pipe()
+        try:
+            return json.loads(self.fd.readline())
+        except IOError as err:
+            if err.errno == errno.EWOULDBLOCK:
+                # No data from clients
+                return None
+            raise
+        except ValueError:
+            # Got wrong data, or EOF
+            return None
+
+    def _open_write_pipe(self):
+        # Open secondary readonly fd so client doesn't get an error if
+        # trying to write before a listener is up
+        self._aux_fd = os.fdopen(
+            os.open(self.path, os.O_RDONLY | os.O_NONBLOCK), 'r', 0)
+        self.fd = os.fdopen(
+            os.open(self.path, os.O_WRONLY | os.O_NONBLOCK), 'w', 0)
+        self.open_for = 'write'
+
+    def _open_read_pipe(self):
+        self.fd = os.fdopen(
+            os.open(self.path, os.O_RDONLY | os.O_NONBLOCK), 'r', 0)
+        # Open secondary writeonly fd so we don't get EOF if all
+        # clients disconnect
+        self._aux_fd = os.fdopen(
+            os.open(self.path, os.O_WRONLY | os.O_NONBLOCK), 'w', 0)
+        self.open_for = 'read'
+
+    def _path_to(self, name):
+        return os.path.join('/tmp/actor_pipes', name)
     
     
 class Manager(object):
 
-    def __init__(self, address=(IP, PORT)):
-        os.mkfifo(MANAGER_ADDRESS)
-        self.server = read_pipe_ref(MANAGER_ADDRESS)
+    def __init__(self, address=None):
+        create_pipe(MANAGER_ADDRESS)
+        self.server = open_read_pipe(MANAGER_ADDRESS)
         # open dummy file descriptor to avoid getting an EOF
-        self.dummy = write_pipe_ref(MANAGER_ADDRESS)
+        self.dummy = open_write_pipe(MANAGER_ADDRESS)
 
         self.queues = {}
         self.conns = 0
@@ -155,7 +201,7 @@ class Manager(object):
         try:
             data = json.loads(data_json)
             obj = data['payload']
-            stream = write_pipe_ref(data['pipe'])
+            stream = open_write_pipe(data['pipe'])
 
             cmd = obj['cmd']
             cmd_f = getattr(self, '_cmd_%s' %cmd, self._cmd_unknown)
@@ -217,7 +263,7 @@ class QueueRef(object):
     RETRIES = 20
     SLEEP = 0.1 # seconds
     
-    def __init__(self, name, address=(IP, PORT)):
+    def __init__(self, name, address=None):
         self.name = name
         # TODO create fifo with name = name
         for i in range(self.RETRIES):
@@ -325,22 +371,4 @@ class QueueRef(object):
 
     def report(self):
         self.write_to_manager({'cmd': 'report'})
-
-def write_to(stream, data):
-    """
-    Send data to a socket, retrying if necessary
-    """
-    try:
-        stream.write(data+'\n')
-    except:
-        logger.debug('Socket closed when writing: %s' %(data,))
-
-def readline_from(stream):
-    try:
-        pipe = read_pipe_ref(stream)
-        x = pipe.readline()   
-        return x 
-    except:
-        logger.debug('socket closed while reading')
-        return ''
 
