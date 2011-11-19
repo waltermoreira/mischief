@@ -26,6 +26,17 @@ class Pipe(object):
         self._aux_fd = None
         self.open_for = None
 
+    def close(self):
+        if self.fd is not None:
+            self.fd.close()
+            self._aux_fd.close()
+            self.fd = self._aux_fd = None
+            self.open_for = None
+
+    def destroy(self):
+        self.close()
+        os.unlink(self.path)
+        
     def write(self, data):
         if self.open_for == 'read':
             raise Exception('pipe already open for reading')
