@@ -141,32 +141,25 @@ class Pipe(object):
                 return None
             # do not ignore other kind of ioerrors
             raise
-        except ValueError:
-            traceback.print_exc()
-            # Got wrong data, or EOF
-            return None
 
-    def read(self, block=False, timeout=None):
-        if block or timeout is not None:
-            # Try to read data until we get an object. If there is
-            # data and it is a simple json object, it will return
-            # immediatly. Otherwise, it will block and keep waiting or
-            # reading parts of a multi-part message until it is
-            # complete
-            start = time.time()
-            while True:
-                data = self._read()
-                if data is not None:
-                    return data
-                if timeout is not None and time.time() - start > timeout:
-                    raise PipeReadTimeout()
-                time.sleep(0.01)
-        else:
-            # Return an object or None (in case there is no data in
-            # the pipe or there is an still incomplete multi-part
-            # message)
-            return self._read()
-                
+    def _read_full(self):
+        # Try to read data until we get an object. If there is
+        # data and it is a simple json object, it will return
+        # immediatly. Otherwise, it will block and keep waiting or
+        # reading parts of a multi-part message until it is
+        # complete
+        while True:
+            data = self._read()
+            if data is not None:
+                return data
+            time.sleep(0.01)
+
+    def read(self, block=True, timeout=None):
+        try:
+            return self.reader_queue.get(block, timeout)
+        except AttributeError:
+            raise Exception('pipe closed')
+        
     def _open_write_pipe(self):
         # Open secondary readonly fd so client doesn't get an error if
         # trying to write before a listener is up
@@ -187,10 +180,16 @@ class Pipe(object):
         
     def _reader(self):
         self.reader_queue = Queue()
-        while True:
-            data = self.read(block=True)
-            self.reader_queue.put(data)
-                                              
+        try:
+            while True:
+                data = self._read_full()
+                if data == '__quit':
+                    return
+                self.reader_queue.put(data)
+        except ValueError:
+            # file descriptor closed, just exit
+            return
+            
     def _path_to(self, name):
         return os.path.join('/tmp/actor_pipes', name)
 
