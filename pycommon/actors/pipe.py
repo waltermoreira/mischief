@@ -1,5 +1,6 @@
 from itertools import izip_longest, imap
 from gevent import sleep
+from Queue import Queue
 import time
 import struct
 import select
@@ -159,7 +160,7 @@ class Pipe(object):
                     return data
                 if timeout is not None and time.time() - start > timeout:
                     raise PipeReadTimeout()
-                sleep(0.01)
+                time.sleep(0.01)
         else:
             # Return an object or None (in case there is no data in
             # the pipe or there is an still incomplete multi-part
@@ -181,7 +182,15 @@ class Pipe(object):
         # clients disconnect
         self._aux_fd = os.fdopen(
             os.open(self.path, os.O_WRONLY | os.O_NONBLOCK), 'w', 0)
-
+        self.reader_thread = threading.Thread(target=self._reader)
+        self.reader_thread.start()
+        
+    def _reader(self):
+        self.reader_queue = Queue()
+        while True:
+            data = self.read(block=True)
+            self.reader_queue.put(data)
+                                              
     def _path_to(self, name):
         return os.path.join('/tmp/actor_pipes', name)
 
