@@ -8,6 +8,7 @@ import json
 import errno
 import os
 import threading
+import traceback
 
 class Pipe(object):
 
