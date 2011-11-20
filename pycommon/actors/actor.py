@@ -96,6 +96,8 @@ class Actor(object):
                              str(uuid.uuid1().hex))
         logger.debug('[Actor %s] creating my inbox' %(self.name,))
         self.inbox = Pipe(self.name, 'r', create=True)
+        # open a write connection to inbox 
+        self.to_inbox = Pipe(self.name, 'w')
         logger.debug('[Actor %s] getting the created inbox' %(self.name,))
         if self.name == 'hardware' or self.name.startswith('actor_ScriptWorker_'):
             self.my_log = lambda *args, **kwargs: None
@@ -116,11 +118,10 @@ class Actor(object):
         """
         Send to myself
         """
-        q = ActorRef(self.name)
-        q.send(msg)
-        q.destroy_ref()
+        self.to_inbox.put(msg)
         
     def destroy_actor(self):
+        self.to_inbox.close()
         self.inbox.destroy()
         
     def read_value(self, value_name):
@@ -192,7 +193,7 @@ class Actor(object):
         # Return all unmatched objects to the inbox
         while not processed.empty():
             x = processed.get()
-            self.inbox.put(x)
+            self.to_inbox.put(x)
         try:
             action = patterns[matched]
         except KeyError:
