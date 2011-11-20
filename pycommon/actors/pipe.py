@@ -1,28 +1,30 @@
 from itertools import izip_longest, imap
+import time
 import struct
 import select
 import uuid
 import json
 import errno
 import os
+import threading
 
 def write(p, c):
     p.write(c*100000)
-    print 'wrote', c, 'to', p
+    print 'ended writing', c
     
 def test():
     p1 = Pipe('foo', 'r')
-    p2 = Pipe('foo', 'w')
-    p3 = Pipe('foo', 'w')
 
-    import threading
-    write(p2, 'X')
-    # t2 = threading.Thread(target=write, args=(p2, 'X'))
-    # #t3 = threading.Thread(target=write, args=(p3, '_'))
-    # t2.start()
-    # #t3.start()
-    # t2.join()
-    #t3.join()
+    symbols = ['X', '_', 'R', '$']
+    threads = []
+    pipes = []
+    for c in symbols:
+        p = Pipe('foo', 'w')
+        pipes.append(p)
+        threads.append(threading.Thread(target=write, args=(p, c)))
+    for t in threads:
+        t.start()
+    
     return p1
 
 def grouper(n, iterable):
