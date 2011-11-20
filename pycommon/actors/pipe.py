@@ -42,6 +42,8 @@ class Pipe(object):
     def __init__(self, name, mode='r', create=False):
         self.parts = {}
         self.name = name
+        self.reader_queue = None
+        self.reader_thread = None
         self.path = self._path_to(name)
         if create and not os.path.exists(self.path):
             print 'mkfifo', self.path
@@ -61,6 +63,10 @@ class Pipe(object):
         """
         Close this end of the pipe.
         """
+        if self.reader_thread:
+            # force reader thread to finish
+            self._aux_fd.write('"__quit"\n')
+            self.reader_thread.join()
         self.fd.close()
         self._aux_fd.close()
         # destroy queue, in case it is a reader, so attempts to read
@@ -186,7 +192,7 @@ class Pipe(object):
         # Open secondary writeonly fd so we don't get EOF if all
         # clients disconnect
         self._aux_fd = os.fdopen(
-            os.open(self.path, os.O_WRONLY | os.O_NONBLOCK), 'w', 0)
+            os.open(self.path, os.O_WRONLY), 'w', 0)
         self.reader_thread = threading.Thread(target=self._reader)
         self.reader_thread.name = 'reader-%s'%(self.name,)
         self.reader_thread.start()
