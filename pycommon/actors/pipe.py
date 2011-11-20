@@ -38,10 +38,11 @@ class Pipe(object):
     # object.
     STRUCT = 'c32si{}s'.format(MAX_BUFSIZE)
     
-    def __init__(self, name, mode='r'):
+    def __init__(self, name, mode='r', create=False):
         self.parts = {}
         self.path = self._path_to(name)
-        if not os.path.exists(self.path):
+        if create and not os.path.exists(self.path):
+            print 'mkfifo', self.path
             os.mkfifo(self.path)
         self.mode = mode
         if mode == 'r':
@@ -64,6 +65,7 @@ class Pipe(object):
         Destroy the pipe, by removing the pipe.
         """
         self.close()
+        print 'unlinking', self.path
         os.unlink(self.path)
 
     def _pack(self, ident, n_part, s):
