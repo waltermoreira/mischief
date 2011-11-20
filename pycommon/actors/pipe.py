@@ -10,6 +10,9 @@ import os
 import threading
 import traceback
 
+class PipeReadTimeout(Exception):
+    pass
+    
 class Pipe(object):
 
     # Maximum size allowed for the json string representing the data,
@@ -140,17 +143,20 @@ class Pipe(object):
             # Got wrong data, or EOF
             return None
 
-    def read(self, block=False):
-        if block:
+    def read(self, block=False, timeout=None):
+        if block or timeout is not None:
             # Try to read data until we get an object. If there is
             # data and it is a simple json object, it will return
             # immediatly. Otherwise, it will block and keep waiting or
             # reading parts of a multi-part message until it is
             # complete
+            start = time.time()
             while True:
                 data = self._read()
                 if data is not None:
                     return data
+                if timeout is not None and time.time() - start > timeout:
+                    raise PipeReadTimeout()
                 sleep(0.01)
         else:
             # Return an object or None (in case there is no data in
