@@ -54,6 +54,9 @@ class Pipe(object):
         else:
             raise Exception("unknown mode. Should be 'r' or 'w'")
 
+    def qsize(self):
+        return self.reader_queue.qsize()
+        
     def close(self):
         """
         Close this end of the pipe.
@@ -107,6 +110,9 @@ class Pipe(object):
             # if the json string is too big, split it
             self._split_write(buf)
 
+    # synonym
+    put = write
+    
     def _split_read(self, s):
         _, ident, part, data = self._unpack(s)
         if part < 0:
@@ -162,7 +168,10 @@ class Pipe(object):
             return self.reader_queue.get(block, timeout)
         except AttributeError:
             raise Exception('pipe closed')
-        
+
+    # synonym
+    get = read
+    
     def _open_write_pipe(self):
         # Open secondary readonly fd so client doesn't get an error if
         # trying to write before a listener is up

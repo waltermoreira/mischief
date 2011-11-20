@@ -7,11 +7,6 @@
 
 An implementation of the `actor model`_.
 
-A queue manager must be created somewhere, and started::
-
-  qm = ActorManager(address=('localhost', 5000), authkey='actor')
-  qm.start()
-
 An actor inherits from ``ThreadedActor`` or ``ProcessActor``, and it
 implements the method ``act()``::
 
@@ -25,7 +20,6 @@ implements the method ``act()``::
 """
 
 import multiprocessing as m
-import manager
 import threading
 import logging
 import logging.handlers
@@ -36,6 +30,7 @@ import signal
 import time
 import uuid
 import socket
+from pipe import Pipe
 from pycommon import log
 
 # multiproc_logger = m.log_to_stderr()
@@ -50,7 +45,7 @@ class ActorRef(object):
     
     def __init__(self, name):
         self.name = name
-        self.q = manager.QueueRef(name)
+        self.q = Pipe(name, 'w')
         
     def send(self, msg):
         """
@@ -69,10 +64,10 @@ class ActorRef(object):
         return self.name
 
     def destroy_ref(self):
-        self.q.destroy_ref()
+        self.q.close()
 
     def destroy_actor(self):
-        self.q.destroy_queue()
+        self.q.destroy()
 
     def flush(self):
         self.q.flush()
@@ -100,7 +95,7 @@ class Actor(object):
         self.name = name or ('actor_' + prefix + '_' +
                              str(uuid.uuid1().hex))
         logger.debug('[Actor %s] creating my inbox' %(self.name,))
-        self.inbox = manager.QueueRef(self.name)
+        self.inbox = Pipe(self.name, 'r', create=True)
         logger.debug('[Actor %s] getting the created inbox' %(self.name,))
         if self.name == 'hardware' or self.name.startswith('actor_ScriptWorker_'):
             self.my_log = lambda *args, **kwargs: None
@@ -126,7 +121,7 @@ class Actor(object):
         q.destroy_ref()
         
     def destroy_actor(self):
-        self.inbox.destroy_queue()
+        self.inbox.destroy()
         
     def read_value(self, value_name):
         def _f(msg):
