@@ -41,6 +41,7 @@ class Pipe(object):
     
     def __init__(self, name, mode='r', create=False):
         self.parts = {}
+        self.name = name
         self.path = self._path_to(name)
         if create and not os.path.exists(self.path):
             print 'mkfifo', self.path
@@ -178,6 +179,7 @@ class Pipe(object):
         self._aux_fd = os.fdopen(
             os.open(self.path, os.O_WRONLY | os.O_NONBLOCK), 'w', 0)
         self.reader_thread = threading.Thread(target=self._reader)
+        self.reader_thread.name = 'reader-%s'%(self.name,)
         self.reader_thread.start()
         
     def _reader(self):
