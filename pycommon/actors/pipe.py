@@ -1,4 +1,5 @@
 from itertools import izip_longest, imap
+from gevent import sleep
 import time
 import struct
 import select
@@ -149,7 +150,7 @@ class Pipe(object):
                 data = self._read()
                 if data is not None:
                     return data
-                time.sleep(0.01)
+                sleep(0.01)
         else:
             # Return an object or None (in case there is no data in
             # the pipe or there is an still incomplete multi-part
