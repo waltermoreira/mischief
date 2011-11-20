@@ -14,6 +14,7 @@ import socket as py_socket
 import time
 import errno
 from pycommon import config, log
+from pycommon.actors.pipe import Pipe, PipeReadTimeout
 import os
 
 MANAGER_ADDRESS = 'manager'
@@ -23,10 +24,7 @@ logger = log.setup('manager', 'to_console')
 class Manager(object):
 
     def __init__(self, address=None):
-        create_pipe(MANAGER_ADDRESS)
-        self.server = open_read_pipe(MANAGER_ADDRESS)
-        # open dummy file descriptor to avoid getting an EOF
-        self.dummy = open_write_pipe(MANAGER_ADDRESS)
+        self.server = Pipe(MANAGER_ADDRESS, mode='r', create=True)
 
         self.queues = {}
         self.conns = 0
@@ -52,21 +50,26 @@ class Manager(object):
                 queue.put(x)
                 
     def _is_alive(self):
+        uid = uuid.uuid1().hex
+        print 'creating', uid
+        p = Pipe(uid, mode='r', create=True)
+        manager = Pipe(MANAGER_ADDRESS, 'w')
+        manager.write({'payload': {'cmd': 'are_you_there'},
+                       'pipe': uid})
         try:
-            s = py_socket.create_connection(self.address)
-            s.close()
-            return True
-        except (py_socket.error, IOError):
-            # Errors mean the connection is NOT alive
+            return p.read(timeout=0.1)
+        except PipeReadTimeout:
             return False
+        finally:
+            manager.close()
+            print 'destroing', uid
+            p.destroy()
 
     def _serve_forever(self):
         try:
             while True:
-                data = self.server.readline()
-                if not data:
-                    sleep(0.01)
-                    continue
+                data = self.server.read(block=True)
+                print 'read', data
                 spawn(self.handle_request, data)
         except KeyboardInterrupt:
             print 'Manager received Control-C. Quitting...'
@@ -78,7 +81,7 @@ class Manager(object):
         server_proc.daemon = True
         server_proc.start()
         while not self._is_alive():
-            time.sleep(0.1)
+            sleep(0.1)
         logger.debug('>>> Manager started with pid: %s' %(server_proc.pid,))
         return server_proc
 
@@ -90,6 +93,10 @@ class Manager(object):
             # Ignore socket errors when stopping
             pass
 
+    def _cmd_are_you_there(self, stream, obj):
+        logger.debug('calling are you there')
+        stream.write(True)
+        
     def _cmd_put(self, stream, obj):
         self.put(obj['name'], obj['arg'])
 
@@ -145,25 +152,24 @@ class Manager(object):
         write_to(stream, json.dumps({'status': False,
                                      'type': 'unknown_cmd'}))
         
-    def handle_request(self, data_json):
+    def handle_request(self, data):
         self.conns += 1
+        pipe_out = None
         try:
-            data = json.loads(data_json)
             obj = data['payload']
-            stream = open_write_pipe(data['pipe'])
-
+            try:
+                pipe_out = Pipe(data['pipe'], 'w')
+            except OSError:
+                print 'Pipe is not created'
+                return
             cmd = obj['cmd']
             cmd_f = getattr(self, '_cmd_%s' %cmd, self._cmd_unknown)
-            cmd_f(stream, obj)
-        except ValueError as exc:
-            # wrong json object
-            write_to(stream, json.dumps({'status': False,
-                                         'type': 'not_a_json',
-                                         'msg': exc.message,
-                                         'line': data_json}))
+            cmd_f(pipe_out, obj)
         except StopIteration:
             pass
         finally:
+            if pipe_out is not None:
+                pipe_out.close()
             self.conns -= 1
 
     def flush(self, name):
