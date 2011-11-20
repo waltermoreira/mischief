@@ -13,7 +13,7 @@ import traceback
 
 class PipeReadTimeout(Exception):
     pass
-    
+
 class Pipe(object):
 
     # Maximum size allowed for the json string representing the data,
@@ -55,11 +55,13 @@ class Pipe(object):
 
     def close(self):
         """
-        Close this end of the pipe. The same object can be used
-        again, for reading or writing.
+        Close this end of the pipe.
         """
         self.fd.close()
         self._aux_fd.close()
+        # destroy queue, in case it is a reader, so attempts to read
+        # do not find an empty queue
+        self.reader_queue = None
 
     def destroy(self):
         """
