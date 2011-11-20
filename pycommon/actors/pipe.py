@@ -79,7 +79,6 @@ class Pipe(object):
         ident = uuid.uuid1()
         for i, part in enumerate(grouper(self.MAX_BUFSIZE, s)):
             print 'writing part', i
-            print '  part', part
             self.fd.write(self._pack(ident, i, part))
         # write part number -1 to signal end of parts
         self.fd.write(self._pack(ident, -1, ' '*self.MAX_BUFSIZE))
@@ -96,13 +95,10 @@ class Pipe(object):
     def _split_read(self, s):
         _, ident, part, data = self._unpack(s)
         if part < 0:
+            print 'collecting parts'
             # we have all the data, concatenate it in the proper order
-            result = []
-            print 'we got all the parts!'
-            print self.parts[ident]
             parts = self.parts[ident]
-            for k in range(len(parts)):
-                result.append(parts[k])
+            result = [parts[k] for k in range(len(parts))]
             # forget all parts for this client
             del self.parts[ident]
             # return the JSON
@@ -110,6 +106,7 @@ class Pipe(object):
         # save the data with the proper part number
         parts = self.parts.setdefault(ident, {})
         parts[part] = data
+        print 'saved part'
         return None
         
     def _read(self):
