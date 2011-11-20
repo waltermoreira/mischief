@@ -112,16 +112,18 @@ class Pipe(object):
         parts[part] = data
         return None
         
-    def read(self):
+    def _read(self):
         if self.mode == 'w':
             raise Exception('pipe already open for writing')
         try:
             first_char = self.fd.read(1)
             if first_char == '}':
+                print 'multipart message'
                 # cannot be a JSON, so we are reading split big chunk of data
                 data = first_char + self.fd.read(struct.calcsize(self.STRUCT)-1)
                 return self._split_read(data)
             else:
+                print 'json data'
                 data = first_char + self.fd.readline()
                 return json.loads(data)
         except IOError as err:
@@ -134,6 +136,16 @@ class Pipe(object):
             # Got wrong data, or EOF
             return None
 
+    def read(self, block=False):
+        if block:
+            while True:
+                data = self._read()
+                if data is not None:
+                    return data
+                time.sleep(0.01)
+        else:
+            return self._read()
+                
     def _open_write_pipe(self):
         # Open secondary readonly fd so client doesn't get an error if
         # trying to write before a listener is up
