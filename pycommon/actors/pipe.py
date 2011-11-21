@@ -10,6 +10,9 @@ import errno
 import os
 import threading
 import traceback
+from pycommon import log
+
+logger = log.setup('pipe', 'to_console')
 
 class PipeReadTimeout(Exception):
     pass
@@ -46,7 +49,7 @@ class Pipe(object):
         self.reader_thread = None
         self.path = self._path_to(name)
         if create and not os.path.exists(self.path):
-            print 'mkfifo', self.path
+            logger.debug('mkfifo %s' %(self.path,))
             os.mkfifo(self.path)
         self.mode = mode
         if mode == 'r':
@@ -78,8 +81,11 @@ class Pipe(object):
         Destroy the pipe, by removing the pipe.
         """
         self.close()
-        print 'unlinking', self.path
-        os.unlink(self.path)
+        logger.debug('unlinking %s' %(self.path,))
+        try:
+            os.unlink(self.path)
+        except OSError:
+            logger.debug('ops, pipe already gone... ignoring')
 
     def _pack(self, ident, n_part, s):
         return struct.pack(self.STRUCT,
@@ -208,6 +214,8 @@ class Pipe(object):
                     return
                 queue.put(data)
         except ValueError:
+            logger.debug('reader thread exiting because of ValueError')
+            logger.debug(traceback.format_exc())
             # file descriptor closed, just exit
             return
             
