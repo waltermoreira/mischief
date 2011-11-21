@@ -193,18 +193,20 @@ class Pipe(object):
         # clients disconnect
         self._aux_fd = os.fdopen(
             os.open(self.path, os.O_WRONLY), 'w', 0)
-        self.reader_thread = threading.Thread(target=self._reader)
+        self.reader_queue = Queue()
+        self.reader_thread = threading.Thread(target=self._reader,
+                                              args=(self.reader_queue,))
         self.reader_thread.name = 'reader-%s'%(self.name,)
+        self.reader_thread.daemon = True
         self.reader_thread.start()
         
-    def _reader(self):
-        self.reader_queue = Queue()
+    def _reader(self, queue):
         try:
             while True:
                 data = self._read_full()
                 if data == '__quit':
                     return
-                self.reader_queue.put(data)
+                queue.put(data)
         except ValueError:
             # file descriptor closed, just exit
             return
