@@ -8,10 +8,10 @@ def test_reply(qm):
             self.receive({
                 'answer': lambda msg: result.append(msg['answer'])})
             return result[0]
-    x = a('a')
+    x = a()
     qt = ActorRef('t')
     qt.send({'tag': 'reply',
-             'reply_to': 'a'})
+             'reply_to': x.name})
     assert x.act() == 5
     
 def test_inbox(qm):
@@ -21,12 +21,12 @@ def test_inbox(qm):
             self.receive({
                 'answer': lambda msg: result.append(msg['answer'])})
             return result[0]
-    x = a('a')
+    x = a()
     qt = ActorRef('t')
     qt.send({'tag': 'foo'})
     qt.send({'tag': 'bar'})
     qt.send({'tag': 'queue',
-             'reply_to': 'a'})
+             'reply_to': x.name})
     assert x.act() == 2
 
 def test_wildcard(qm):
@@ -36,8 +36,8 @@ def test_wildcard(qm):
             self.receive({
                 '*': lambda msg: result.append(msg['tag'])})
             return result
-    x = a('a')
-    qa = ActorRef('a')
+    x = a()
+    qa = ActorRef(x.name)
     qa.send({'tag': 'foo'})
     assert x.act() == ['foo']
 
@@ -50,7 +50,7 @@ def test_timeout(qm):
                 'timeout': lambda msg: result.append(True)},
                 timeout=0.1)
             return result
-    x = a('a')
+    x = a()
     assert x.act()[-1]
 
 def test_read_value(qm):
@@ -60,8 +60,8 @@ def test_read_value(qm):
                 'ack': self.read_value('foo')
                 })
             return self.foo
-    x = a('a')
-    qm = ActorRef('a')
+    x = a()
+    qm = ActorRef(x.name)
     qm.send({'tag': 'ack', 'foo': 5})
     assert x.act() == 5
 
