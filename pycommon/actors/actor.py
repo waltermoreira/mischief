@@ -184,7 +184,12 @@ class Actor(object):
         # Return all unmatched objects to the inbox
         while not processed.empty():
             x = processed.get()
-            self.to_inbox.put(x)
+            logger.debug('restoring object: %s' %(x,))
+            # restore unprocessed object directly to the reader queue,
+            # bypassing the fifo, to avoid overhead.  This is possible
+            # because we have a reference to the read end of the
+            # pipe.
+            self.inbox.reader_queue.put(x)
         try:
             action = patterns[matched]
         except KeyError:
