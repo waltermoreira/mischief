@@ -29,13 +29,18 @@ class _process_actor(Actor):
         ActorRef(msg['reply_to']).send({
             'tag': 'reply'
             })
+
+    def quit(self, msg):
+        sys.exit(0)
         
     def act(self):
         while True:
             self.receive({
                 'reply': 'reply',
                 'queue': 'queue',
-                'spawn': 'spawn'})
+                'spawn': 'spawn',
+                'quit': 'quit'
+            })
 
 if __name__ == '__main__':
     q = _process_actor('p')

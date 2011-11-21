@@ -9,8 +9,13 @@ from proc_actor import process_actor
 def pytest_funcarg__qm(request):
     return request.cached_setup(
         setup=create_queue_manager,
-        teardown=lambda x: x.stop(),
+        teardown=lambda x: destroy(),
         scope='session')
+
+def destroy():
+    ActorRef('t').destroy_actor()
+    ActorRef('p').send({'tag': 'quit'})
+    ActorRef('p').destroy_actor()
 
 class _threaded_actor(ThreadedActor):
 
@@ -34,10 +39,6 @@ class _threaded_actor(ThreadedActor):
 
 
 def create_queue_manager():
-    qm = Manager()
-    qm.start()
     t = _threaded_actor('t')
     process_actor()
     #p = _process_actor('p')
-    return qm
-

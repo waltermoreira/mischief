@@ -29,27 +29,6 @@ def test_inbox(qm):
             'reply_to': 'a'})
     assert x.act() == 2
 
-# def test_actor_spawns_actor(qm):
-#     class a(Actor):
-#         def act(self):
-#             qm.get_actor_ref('p').send({
-#                 'tag': 'spawn',
-#                 'reply_to': self.me()
-#                 })
-#             self.receive({
-#                 'reply': lambda msg: None
-#                 })
-#             qm.get_actor_ref('child').send({
-#                 'tag': 'foo',
-#                 'reply_to': self.me()
-#                 })
-#             self.receive({
-#                 'reply': self.read_value('data')
-#                 })
-#             return self.data
-#     x = a('a')
-#     assert x.act() == 3
-
 def test_timeout_zero(qm):
     class a(Actor):
         def act(self):
@@ -57,11 +36,10 @@ def test_timeout_zero(qm):
                 'foo': self.read_value('data'),
                 }, timeout=0)
             return getattr(self, 'data', None)
-    x = a('a')
-    ActorRef('a').send({'tag': 'foo', 'data': 1})
-    y = x.act()
-    y = x.act()
-    y = x.act()
+    x = a()
+    ActorRef(x.name).send({'tag': 'foo', 'data': 1})
+    while x.act() is None:
+        time.sleep(0.1)
     y = x.act()
     assert y == 1
 
@@ -72,13 +50,13 @@ def test_timeout_zero_2(qm):
                 'foo': self.read_value('data'),
                 }, timeout=0)
             return getattr(self, 'data', None)
-    x = a('b')
-    y = ActorRef('b')
+    x = a()
+    y = ActorRef(x.name)
     y.send({'tag': 'bar'})
     y.send({'tag': 'baz'})
     y.send({'tag': 'foo', 'data': 1})
     y.send({'tag': 'gii'})
-    while y.q.qsize() < 4:
+    while x.inbox.qsize() < 4:
         time.sleep(0.1)
     z = x.act()
     assert z == 1
@@ -87,11 +65,13 @@ def test_timeout_zero_no_match(qm):
     class a(Actor):
         def act(self):
             self.receive({
-                'foo': self.read_value('data'),
+                'foo': self.read_value('data')
                 }, timeout=0)
             return getattr(self, 'data', None)
-    x = a('a')
-    ActorRef('a').send({'tag': 'bar', 'data': 2})
+    x = a()
+    ActorRef(x.name).send({'tag': 'bar', 'data': 2})
+    while x.inbox.qsize() != 1:
+        time.sleep(0.1)
     y = x.act()
     y = x.act()
     y = x.act()
@@ -107,8 +87,10 @@ def test_timeout_eating_msgs(qm):
             self.receive({'bar': lambda msg: None,
                           'timeout': lambda msg: result.append(False)},
                          timeout=0.1)
-    x = a('a')
-    ActorRef('a').send({'tag': 'bar'})
+    x = a()
+    ActorRef(x.name).send({'tag': 'bar'})
+    while x.inbox.qsize() != 1:
+        time.sleep(0.1)
     x.act()
     x.act2()
     assert result[-1]
