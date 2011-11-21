@@ -69,9 +69,6 @@ class ActorRef(object):
     def destroy_actor(self):
         self.q.destroy()
 
-    def flush(self):
-        self.q.flush()
-
     def __del__(self):
         try:
             logger.debug('Finalizing actor_ref for %s' %self.name)
@@ -96,7 +93,8 @@ class Actor(object):
                              str(uuid.uuid1().hex))
         logger.debug('[Actor %s] creating my inbox' %(self.name,))
         self.inbox = Pipe(self.name, 'r', create=True)
-        # open a write connection to inbox 
+        # open a write connection to inbox, to restore messages that
+        # will not be processed right now (selective receive)
         self.to_inbox = Pipe(self.name, 'w')
         logger.debug('[Actor %s] getting the created inbox' %(self.name,))
         if self.name == 'hardware' or self.name.startswith('actor_ScriptWorker_'):
@@ -170,13 +168,6 @@ class Actor(object):
                 self.my_log('[Actor %s] empty inbox' %(self.name,))
                 continue
             try:
-                if not msg:
-                    # Get a refreshed inbox and keep reading.  This
-                    # may fail if the reason we lost connection is
-                    # because the manager is stopping (for example
-                    # when quitting the application).
-                    self.inbox = manager.QueueRef(self.name)
-                    continue
                 if msg['tag'] in patterns:
                     matched = msg['tag']
                     break
@@ -222,53 +213,16 @@ class ThreadedActor(Actor):
         self.thread.daemon = True
         self.thread.start()
 
-class FastActor(Actor):
-    """
-    A fast actor replaces its inbox (which is a connection to a queue
-    in the manager) by a local queue, and starts a thread to read from
-    manager into this new local queue.
-
-    The ``receive`` function then reads from the local queue, which is
-    faster.  The drawback is that we have to keep an additional
-    thread.
-    """
-
-    def __init__(self, name=None, prefix=''):
-        super(FastActor, self).__init__(name=name, prefix=prefix)
-        logger.debug('[%s] Fast actor created' %self.name[:30])
-        self.external = self.inbox
-        self.inbox = Queue.Queue()
-        self.t = threading.Thread(target=self.copy_to_internal)
-        self.t.daemon = True
-        self.t.start()
-
-    def destroy_actor(self):
-        q = ActorRef(self.external.name)
-        q.destroy_actor()
-
-    def copy_to_internal(self):
-        try:
-            while True:
-                x = self.external.get()
-                # getting None means we want to refresh the inbox by
-                # flushing everything
-                if x is None:
-                    logger.debug('Thread got None. Refreshing queue')
-                    self.external.flush()
-                    self.inbox = Queue.Queue()
-                # getting False means that the socket is closing, just
-                # leave so the thread finishes
-                elif x is False:
-                    logger.debug('Thread got False')
-                    return
-                else:
-                    self.inbox.put(x)
-        except Exception as exc:
-            # when actor dies, queue will get eof
-            # just leave
-            pass
         
 class Test(Actor):
     def act(self):
-        self.receive({'foo': lambda *args: None})
-        
+        self.receive(
+            {'foo': lambda *args: None,
+             'bar': 'bar'})
+
+    def bar(self, msg):
+        print 'bar', msg
+        self.receive({'baz': 'baz'})
+
+    def baz(self, msg):
+        print 'baz', msg
