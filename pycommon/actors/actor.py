@@ -96,7 +96,6 @@ class Actor(object):
         # open a write connection to inbox, to restore messages that
         # will not be processed right now (selective receive)
         self.to_inbox = Pipe(self.name, 'w')
-        logger.debug('[Actor %s] getting the created inbox' %(self.name,))
         if self.name == 'hardware' or self.name.startswith('actor_ScriptWorker_'):
             self.my_log = lambda *args, **kwargs: None
         else:
@@ -142,7 +141,9 @@ class Actor(object):
         
         """
         inbox_polling = timeout and self.INBOX_POLLING_TIMEOUT
+        self.my_log('[Actor %s] creating temporary queue' %(self.name,))
         processed = Queue.Queue()
+        self.my_log('[Actor %s] Temporary queue created' %(self.name,))
         start_time = current_time = time.time()
         msg = {}
         self.my_log('[Actor %s] starting receive'%(self.name,))

@@ -114,6 +114,8 @@ class Pipe(object):
         if self.mode == 'r':
             raise Exception('pipe already open for reading')
         buf = json.dumps(data)
+        logger.debug('writing to pipe %s' %(self.name,))
+        logger.debug('  object: %s' %(buf,))
         if len(buf) < self.MAX_UNSPLIT:
             # if the json string fits in PIPE_BUF bytes, just write it
             # with a newline, so it can be read with 'readline'
@@ -145,6 +147,7 @@ class Pipe(object):
     def _read(self):
         if self.mode == 'w':
             raise Exception('pipe already open for writing')
+        first_char = None
         try:
             first_char = self.fd.read(1)
             if first_char == '}':
@@ -159,6 +162,7 @@ class Pipe(object):
         except IOError as err:
             if err.errno == errno.EWOULDBLOCK:
                 # No data from clients
+                logger.debug('[Pipe %s] no data for client (first_char = %s' %(self.name, first_char))
                 return None
             # do not ignore other kind of ioerrors
             raise
@@ -177,7 +181,9 @@ class Pipe(object):
 
     def read(self, block=True, timeout=None):
         try:
-            return self.reader_queue.get(block, timeout)
+            x = self.reader_queue.get(block, timeout)
+            logger.debug('reader queue for %s got %s' %(self.name, x))
+            return x
         except AttributeError:
             raise Exception('pipe closed')
 
@@ -212,7 +218,11 @@ class Pipe(object):
                 data = self._read_full()
                 if data == '__quit':
                     return
+                logger.debug('reading from pipe %s into python queue' %(self.name,))
+                logger.debug('  before inserting: size(queue) = %s' %(queue.qsize()))
                 queue.put(data)
+                logger.debug('  after inserting: size(queue) = %s' %(queue.qsize()))
+                
         except ValueError:
             logger.debug('reader thread exiting because of ValueError')
             logger.debug(traceback.format_exc())
