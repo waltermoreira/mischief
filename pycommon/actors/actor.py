@@ -36,7 +36,7 @@ from pycommon import log
 # multiproc_logger = m.log_to_stderr()
 # multiproc_logger.setLevel(m.SUBDEBUG)
 
-logger = log.setup('actor', 'to_console')
+logger = log.setup('actor', 'to_file')
 
 class ActorRef(object):
     """

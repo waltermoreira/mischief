@@ -12,7 +12,7 @@ import threading
 import traceback
 from pycommon import log
 
-logger = log.setup('pipe', 'to_console')
+logger = log.setup('pipe', 'to_file')
 
 class PipeReadTimeout(Exception):
     pass
@@ -162,7 +162,8 @@ class Pipe(object):
         except IOError as err:
             if err.errno == errno.EWOULDBLOCK:
                 # No data from clients
-                logger.debug('[Pipe %s] no data for client (first_char = %s' %(self.name, first_char))
+                if first_char is not None:
+                    logger.debug('[Pipe %s] no data for client (first_char = %s' %(self.name, first_char))
                 return None
             # do not ignore other kind of ioerrors
             raise
