@@ -24,4 +24,7 @@ def getUTCstrFromIndexTime(idx):
                           minute=utc.min,
                           second=utc.sec,
                           microsecond=int(utc.usec))
-    return utc_idx.isoformat()
+    return utc_idx.time().isoformat()
+
+def getCurrentIndexTime():
+    return HET2_Time.getCurrentIndexTime()
