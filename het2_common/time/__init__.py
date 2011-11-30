@@ -28,3 +28,6 @@ def getUTCstrFromIndexTime(idx):
 
 def getCurrentIndexTime():
     return HET2_Time.getCurrentIndexTime()
+
+def getIndexTimeFromUTCstr(s):
+    return HET2_Time.getIndexTimeFromUTCstr(s)
