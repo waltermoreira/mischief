@@ -1,4 +1,5 @@
 all:
+	mkdir -p /tmp/actor_pipes
 	python setup.py install --prefix=$(HET2_DEPLOY)
 	$(MAKE) html --directory=doc
 
