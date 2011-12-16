@@ -231,7 +231,8 @@ class Pipe(object):
             return
             
     def _path_to(self, name):
-        return os.path.join('/tmp/actor_pipes', name)
+        deploy = os.environ['HET2_DEPLOY']
+        return os.path.join(deploy, 'lib/run/actor_pipes', name)
 
 def grouper(n, iterable):
     """
