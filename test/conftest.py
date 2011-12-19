@@ -1,5 +1,4 @@
 from pycommon.actors.actor import ThreadedActor, ActorRef
-from pycommon.actors.manager import Manager
 import multiprocessing
 import signal
 import time
