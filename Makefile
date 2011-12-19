@@ -11,6 +11,7 @@ test:
 	py.test
 
 install:
+	mkdir -p $(HET2_DEPLOY)/lib/run/actor_pipes
 	python setup.py install --prefix=$(HET2_DEPLOY)
 	cp actors.conf.example $(HET2_DEPLOY)/etc
 
