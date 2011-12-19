@@ -8,7 +8,9 @@ clean:
 
 .PHONY: test
 test:
-	py.test
+	mkdir -p $(HET2_DEPLOY)/test/pycommon_tests
+	cp -a test $(HET2_DEPLOY)/test/pycommon_tests
+	py.test $(HET2_DEPLOY)/test/pycommon_tests
 
 install:
 	mkdir -p $(HET2_DEPLOY)/lib/run/actor_pipes
