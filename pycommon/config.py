@@ -50,7 +50,7 @@ def read_config(cfg, mod):
             f = conversions.get(type(default), cfg.get)
             setattr(mod, attr, f(section, option))
 
-def load_config(name, mod):
+def load_config(name, mod, filename):
     """
     Update the module ''mod'' from the values of the configuration
     file ''<deploy_dir>/etc/<name>''.
@@ -58,7 +58,7 @@ def load_config(name, mod):
     Most common use is::
 
       import logger.config
-      load_config('logger', logger.config)
+      load_config('logger', logger.config, __file__)
 
     or substituting gui for logger.
     """
@@ -66,7 +66,8 @@ def load_config(name, mod):
     cfg = ConfigParser()
     res = cfg.read(cfg_file)
     if res:
-        print >>sys.stderr, 'Loaded config file:', cfg_file
+        print >>sys.stderr, ('Loaded config file: %s in %s'
+                             %(cfg_file, filename))
     else:
         print >>sys.stderr, ('No config file found in %s'
                              %join(os.environ['HET2_DEPLOY'], 'etc'))
