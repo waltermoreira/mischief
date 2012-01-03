@@ -62,18 +62,19 @@ def load_config(name, mod):
 
     or substituting gui for logger.
     """
-    cfg_file = join(HET2_DEPLOY, 'etc', name+'.conf')
+    cfg_file = join(os.environ['HET2_DEPLOY'], 'etc', name+'.conf')
     cfg = ConfigParser()
     res = cfg.read(cfg_file)
     if res:
         print >>sys.stderr, 'Loaded config file:', cfg_file
     else:
-        print >>sys.stderr, 'No config file found in', join(HET2_DEPLOY, 'etc')
+        print >>sys.stderr, ('No config file found in %s'
+                             %join(os.environ['HET2_DEPLOY'], 'etc'))
         print >>sys.stderr, 'Using defaults from module %s.config' %name
     read_config(cfg, mod)
     global stats
     stats = importlib.import_module(name+'.compilestats')
-    log.setup_log(name, HET2_DEPLOY)
+    log.setup_log(name, os.environ['HET2_DEPLOY'])
     
 def setup(fname):
     global HET2_DEPLOY, HET2_AUXIL
