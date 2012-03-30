@@ -74,11 +74,11 @@ def setup_log(mod_name, deploy_dir):
         # already configured
         return
 
-    conf_file = os.path.join(os.environ['HET2_DEPLOY'], 'etc/actors.conf')
+    conf_file = os.path.join(os.environ['HET2_DEPLOY'], 'etc/py_logging.conf')
     c = ConfigParser()
     res = c.read(conf_file)
     try:
-        disabled = not c.getboolean('logging', 'enabled')
+        disabled = not c.getboolean('enabled', mod_name)
     except (NoSectionError, NoOptionError):
         disabled = False
     
