@@ -12,6 +12,9 @@ def accept_context(f):
 
     Then, the function ``f`` can be called as ``f(x, y)`` or ``f(x, y,
     c)``, where ``c`` is a context object.
+
+    **Warning**: use only to wrap functions that are going to live in
+    the TCS' built-in Python interpreter.
     """
     import _TCS
     Context = type(_TCS.get_context())
