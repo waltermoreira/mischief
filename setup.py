@@ -21,5 +21,6 @@ setup(name='het2_common',
       author_email='moreira@astro.as.utexas.edu',
       ext_modules=[het2_time],
       packages=['het2_common',
-                'het2_common.time'],
+                'het2_common.time',
+                'het2_common.trajectories'],
       )
