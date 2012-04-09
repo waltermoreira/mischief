@@ -74,7 +74,11 @@ def uniform_distance(self, other_traj):
             'other_traj': other.tolist(),
             'length_mismatch': length_mismatch,
             'distance': norm.tolist()}
-    
+
+@accept_context
+def compare_trajectories(traj, traj_file):
+    return uniform_distance(traj, traj_file)
+
 def monkey_patch(env):
     Trajectory = env['Trajectory']
     Trajectory.uniform_distance = uniform_distance
