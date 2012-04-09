@@ -1,3 +1,4 @@
+import os
 import types
 from het2_common import accept_context
 import numpy as np
@@ -11,8 +12,20 @@ def _read_traj_file(filename):
 
     Return an numpy array of dimension n x 7.
     """
-    pass
+    result = []
+    with open(filename) as f:
+        # skip first 5 lines of header
+        [next(f) for _ in range(5)]
+        for line in f:
+            result.append([float(x) for x in line.split()[:7]])
+    return np.array(result)
 
+@accept_context
+def read_trajectory(self, filename):
+    traj_file = os.path.join(os.environ['HET2_DEPLOY'],
+                             'test/trajectory_tests', filename)
+    return _read_traj_file(traj_file)
+    
 @accept_context
 def uniform_distance(self, other_traj):
     """
@@ -31,16 +44,13 @@ def uniform_distance(self, other_traj):
     Reference: wikipedia.org/wiki/Uniform_metric
     """
     c = None
-    print 'self is', self
     pts_flat = self.getPtsFlat(c)
     pts = np.array(pts_flat)
     # make an array of shape n x 7
     pts = pts.reshape(-1, 7)
     return pts
     
-def new_meth(self, x, y=3):
-    print x, y
-
 def monkey_patch(env):
     Trajectory = env['Trajectory']
     Trajectory.uniform_distance = uniform_distance
+    Trajectory.read_trajectory = read_trajectory
