@@ -12,7 +12,7 @@ def _read_traj_file(filename):
     Return an numpy array of dimension n x 7.
     """
     pass
-    
+
 @accept_context
 def uniform_distance(self, other_traj):
     """
@@ -38,6 +38,9 @@ def uniform_distance(self, other_traj):
     pts = pts.reshape(-1, 7)
     return pts
     
+def new_meth(self, x, y=3):
+    print x, y
+
 def monkey_patch(env):
     Trajectory = env['Trajectory']
     Trajectory.uniform_distance = uniform_distance
