@@ -71,7 +71,6 @@ class PlotActor(Actor):
         plt.show()
         
     def quit(self, msg):
-        print 'Quitting plot actor'
         raise StopIteration
 
         
