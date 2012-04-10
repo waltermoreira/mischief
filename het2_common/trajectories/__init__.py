@@ -87,6 +87,7 @@ def compare_trajectories(traj, traj_file, plots=True, tolerances=None):
     if plots:
         pa = ActorRef('PlotActor')
         pa.send({'tag': 'plot',
+                 'tolerances': tolerances,
                  'traj': traj_pts.tolist(),
                  'other_traj': other_pts.tolist()})
         pa.destroy_ref()
