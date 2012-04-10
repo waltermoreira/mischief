@@ -91,3 +91,4 @@ def compare_trajectories(traj, traj_file, plots=True, tolerances=None):
                  'other_traj': other_pts.tolist()})
         pa.destroy_ref()
     
+    return norm.tolist()
