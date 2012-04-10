@@ -1,3 +1,4 @@
+import json
 import os
 import types
 from het2_common import accept_context
@@ -32,7 +33,15 @@ def read_trajectory(filename):
     traj_file = os.path.join(os.environ['HET2_DEPLOY'],
                              'test/trajectory_tests', filename)
     return _read_traj_file(traj_file)
-    
+
+def read_tolerances():
+    tols = os.path.join(os.environ['HET2_DEPLOY'],
+                        'test/trajectory_tests/tolerances.json')
+    with open(tols) as f:
+        tolerances = json.load(f)
+        return [tolerances.get(label, 0)
+                for label in ['Time', 'X', 'Y', 'Z', 'Theta', 'Phi', 'Rho']]
+        
 @accept_context
 def compare_trajectories(traj, traj_file, plots=True, tolerances=None):
     plot_actor.ensure_running()
@@ -64,9 +73,13 @@ def compare_trajectories(traj, traj_file, plots=True, tolerances=None):
     rms = np.sqrt(np.sum((traj_pts - other_pts)**2, axis=0)/n)
 
     print
+
+    tolerances = tolerances or read_tolerances()
     
     for i, label in enumerate(['Time', 'X', 'Y', 'Z', 'Theta', 'Phi', 'Rho']):
-        print '%-5s: dist = %7.3f, rms = %7.3f' %(label, norm[i], rms[i])
+        score = '.PASS.' if norm[i] < tolerances[i] else '_FAIL_'
+        print ('%-5s: dist = %7.3f, rms = %7.3f, tol = %7.5f  %s'
+               %(label, norm[i], rms[i], tol[i], score))
         
     # send data to plot actor
     if plots:

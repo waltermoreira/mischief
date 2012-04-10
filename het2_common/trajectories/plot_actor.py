@@ -83,7 +83,6 @@ class PlotActor(Actor):
             self._do_delta_plots(data, other_data, axs[1, i])
 
         plt.show()
-        print 'plotted'
         
     def quit(self, msg):
         print 'Quitting plot actor'
