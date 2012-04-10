@@ -34,7 +34,7 @@ def read_trajectory(filename):
     return _read_traj_file(traj_file)
     
 @accept_context
-def compare_trajectories(traj, traj_file, plots='screen'):
+def compare_trajectories(traj, traj_file, plots=True):
     plot_actor.ensure_running()
     
     traj_pts = np.reshape(np.array(traj.getPtsFlat(None)), (-1, 7))
@@ -67,8 +67,3 @@ def compare_trajectories(traj, traj_file, plots='screen'):
              'other_traj': other_pts.tolist()})
     pa.destroy_ref()
     
-def monkey_patch(env):
-    Trajectory = env['Trajectory']
-    # Trajectory.uniform_distance = uniform_distance
-    # Trajectory.compare = uniform_distance
-    # Trajectory.read_trajectory = read_trajectory

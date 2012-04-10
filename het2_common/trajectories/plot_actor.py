@@ -41,24 +41,41 @@ class PlotActor(Actor):
         try:
             while True:
                 self.receive({'quit': self.quit,
+                              'test': self.test,
+                              'tight': self.tight,
                               'plot': self.plot})
         except StopIteration:
             return
 
+    def test(self, msg):
+        fig, axs = plt.subplots(nrows=2, ncols=7)
+        axs[0,0].plot([1,2,3,5])
+        plt.draw()
+        print 'drawn'
+        plt.show()
+        print 'shown'
+
+    def tight(self, msg):
+        print 'tighting'
+        plt.tight_layout(pad=0.3, w_pad=0.3, h_pad=0.3)
+        
     def plot(self, msg):
-        print 'Got plot message'
         traj = np.array(msg['traj'])
         other_traj = np.array(msg['other_traj'])
         fix, axs = plt.subplots(nrows=2, ncols=7)
+        plt.subplots_adjust(left=0.05, right=0.95, wspace=0.15)
         times = axs[0, 0]
         data = traj[:, 0]
         other_data = other_traj[:, 0]
         times.plot(data)
         times.plot(other_data)
-        times.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(2))
+        times.set_xticks([])
+        #times.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(3))
         plt.show()
+        print 'plotted'
         
     def quit(self, msg):
+        print 'Quitting plot actor'
         raise StopIteration
 
         
