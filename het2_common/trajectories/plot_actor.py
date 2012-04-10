@@ -58,19 +58,30 @@ class PlotActor(Actor):
     def tight(self, msg):
         print 'tighting'
         plt.tight_layout(pad=0.3, w_pad=0.3, h_pad=0.3)
+
+    def _do_plot(self, data, other_data, ax, label):
+        ax.plot(data)
+        ax.plot(other_data)
+        ax.set_xticks([])
+        ax.set_title(label)
+
+    def _do_delta_plots(self, data, other_data, ax):
+        ax.plot(data-other_data)
+        ax.set_xticks([])
         
     def plot(self, msg):
         traj = np.array(msg['traj'])
         other_traj = np.array(msg['other_traj'])
-        fix, axs = plt.subplots(nrows=2, ncols=7)
-        plt.subplots_adjust(left=0.05, right=0.95, wspace=0.15)
-        times = axs[0, 0]
-        data = traj[:, 0]
-        other_data = other_traj[:, 0]
-        times.plot(data)
-        times.plot(other_data)
-        times.set_xticks([])
-        #times.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(3))
+        fig, axs = plt.subplots(nrows=2, ncols=7)
+        plt.subplots_adjust(left=0.05, right=0.95, wspace=0.3)
+
+        labels = ['Time', 'X', 'Y', 'Z', 'Theta', 'Phi', 'Rho']
+        for i, label in enumerate(labels):
+            data = traj[:, i]
+            other_data = other_traj[:, i]
+            self._do_plot(data, other_data, axs[0, i], label)
+            self._do_delta_plots(data, other_data, axs[1, i])
+
         plt.show()
         print 'plotted'
         
