@@ -51,13 +51,15 @@ class PlotActor(Actor):
         ax.set_xticks([])
         ax.set_title(label)
 
-    def _do_delta_plots(self, data, other_data, ax):
+    def _do_delta_plots(self, data, other_data, ax, tol):
         ax.plot(data-other_data)
         ax.set_xticks([])
+        ax.set_ylim(-tol, tol)
         
     def plot(self, msg):
         traj = np.array(msg['traj'])
         other_traj = np.array(msg['other_traj'])
+        tolerances = msg['tolerances']
         fig, axs = plt.subplots(nrows=2, ncols=7)
         plt.subplots_adjust(left=0.05, right=0.95, wspace=0.3)
 
@@ -66,7 +68,7 @@ class PlotActor(Actor):
             data = traj[:, i]
             other_data = other_traj[:, i]
             self._do_plot(data, other_data, axs[0, i], label)
-            self._do_delta_plots(data, other_data, axs[1, i])
+            self._do_delta_plots(data, other_data, axs[1, i], tolerances[i])
 
         plt.show()
         
