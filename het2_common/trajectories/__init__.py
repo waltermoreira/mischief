@@ -79,7 +79,7 @@ def compare_trajectories(traj, traj_file, plots=True, tolerances=None):
     for i, label in enumerate(['Time', 'X', 'Y', 'Z', 'Theta', 'Phi', 'Rho']):
         score = '.PASS.' if norm[i] < tolerances[i] else '_FAIL_'
         print ('%-5s: dist = %7.3f, rms = %7.3f, tol = %7.5f  %s'
-               %(label, norm[i], rms[i], tol[i], score))
+               %(label, norm[i], rms[i], tolerances[i], score))
         
     # send data to plot actor
     if plots:
