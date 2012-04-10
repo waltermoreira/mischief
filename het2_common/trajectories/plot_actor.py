@@ -4,8 +4,9 @@ import subprocess
 import matplotlib
 matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 from pycommon.actors.actor import Actor, ActorRef
-
+import numpy as np
 
 def ensure_running():
     try:
@@ -29,7 +30,8 @@ def start_actor():
     p = subprocess.Popen(['python', myself, w.name])
     w.act()
     w.destroy_actor()
-        
+
+    
 class PlotActor(Actor):
 
     def __init__(self):
@@ -39,22 +41,27 @@ class PlotActor(Actor):
         try:
             while True:
                 self.receive({'quit': self.quit,
-                              'plot': self.plot,
-                              'hi': self.say_hi})
+                              'plot': self.plot})
         except StopIteration:
             return
 
     def plot(self, msg):
-        plt.plot([1,2,3,5])
+        print 'Got plot message'
+        traj = np.array(msg['traj'])
+        other_traj = np.array(msg['other_traj'])
+        fix, axs = plt.subplots(nrows=2, ncols=7)
+        times = axs[0, 0]
+        data = traj[:, 0]
+        other_data = other_traj[:, 0]
+        times.plot(data)
+        times.plot(other_data)
+        times.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(2))
         plt.show()
         
     def quit(self, msg):
         raise StopIteration
+
         
-    def say_hi(self, msg):
-        print 'hi!!!'
-
-
 if __name__ == '__main__':
     wait_ref = sys.argv[1]
     wait = ActorRef(wait_ref)

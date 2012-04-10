@@ -3,7 +3,8 @@ import types
 from het2_common import accept_context
 import numpy as np
 from itertools import *
-
+from ..trajectories import plot_actor
+from pycommon.actors.actor import ActorRef
 
 @accept_context
 def _read_traj_file(filename):
@@ -21,7 +22,7 @@ def _read_traj_file(filename):
     return np.array(result)
 
 @accept_context
-def read_trajectory(self, filename):
+def read_trajectory(filename):
     """
     Read a file in ``point`` format to a numpy array.
 
@@ -33,54 +34,41 @@ def read_trajectory(self, filename):
     return _read_traj_file(traj_file)
     
 @accept_context
-def uniform_distance(self, other_traj):
-    """
-    Compute the uniform distance between two trajectories,
-    elementwise::
-
-        uniform_distance(self, other) -> (d1, d2, ..., d7)
-
-    where d_i is the uniform distance in the i-th coordinate.
-
-    The ``other`` parameters is the name of a ``point`` formatted file.
+def compare_trajectories(traj, traj_file, plots='screen'):
+    plot_actor.ensure_running()
     
-    Reference: wikipedia.org/wiki/Uniform_metric
-    """
-    c = None
-    pts_flat = self.getPtsFlat(c)
-    pts = np.array(pts_flat)
-    # make an array of shape n x 7
-    pts = pts.reshape(-1, 7)
-    pts_n, _ = pts.shape
-    
-    other = read_trajectory(self, other_traj)
-    other_n, _ = other.shape
+    traj_pts = np.reshape(np.array(traj.getPtsFlat(None)), (-1, 7))
+    traj_pts_n, _ = traj_pts.shape
 
-    if pts_n != other_n:
-        length_mismatch = (pts_n, other_n)
-        n = min(length_mismatch)
+    other_pts = read_trajectory(traj_file)
+    other_pts_n, _ = other_pts.shape
+
+    if traj_pts_n != other_pts_n:
+        n = min(traj_pts_n, other_pts_n)
+        print 'There is a length mismatch in trajectories:'
+        print '    trajectory object: %s points' %traj_pts_n
+        print '    trajectory file  : %s points' %other_pts_n
+        print 'Will consider only %s points from each trajectory.' %n
     else:
-        length_mismatch = None
-        n = pts_n
+        n = traj_pts_n
+        print 'Trajectory length: %s points' %n
 
     # Truncate trajectories to same length, for computing deltas
-    pts = pts[:n, :]
-    other = other[:n, :]
+    traj_pts = traj_pts[:n, :]
+    other_pts = other_pts[:n, :]
     
     # maximum values for each column
-    norm = np.amax(abs(pts - other), axis=0)
+    norm = np.amax(abs(traj_pts - other_pts), axis=0)
     
-    return {'traj': pts.tolist(),
-            'other_traj': other.tolist(),
-            'length_mismatch': length_mismatch,
-            'distance': norm.tolist()}
-
-@accept_context
-def compare_trajectories(traj, traj_file):
-    return uniform_distance(traj, traj_file)
-
+    pa = ActorRef('PlotActor')
+    pa.send({'tag': 'plot',
+             'plots': plots,
+             'traj': traj_pts.tolist(),
+             'other_traj': other_pts.tolist()})
+    pa.destroy_ref()
+    
 def monkey_patch(env):
     Trajectory = env['Trajectory']
-    Trajectory.uniform_distance = uniform_distance
-    Trajectory.compare = uniform_distance
-    Trajectory.read_trajectory = read_trajectory
+    # Trajectory.uniform_distance = uniform_distance
+    # Trajectory.compare = uniform_distance
+    # Trajectory.read_trajectory = read_trajectory
