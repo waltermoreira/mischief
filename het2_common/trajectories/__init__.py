@@ -16,9 +16,11 @@ def _read_traj_file(filename):
     """
     result = []
     with open(filename) as f:
-        # skip first 5 lines of header
-        [next(f) for _ in range(5)]
         for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                # skip comments and blank lines
+                continue
             result.append([float(x) for x in line.split()[:7]])
     return np.array(result)
 
