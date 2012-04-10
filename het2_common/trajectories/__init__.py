@@ -34,7 +34,7 @@ def read_trajectory(filename):
     return _read_traj_file(traj_file)
     
 @accept_context
-def compare_trajectories(traj, traj_file, plots=True):
+def compare_trajectories(traj, traj_file, plots=True, tolerances=None):
     plot_actor.ensure_running()
     
     traj_pts = np.reshape(np.array(traj.getPtsFlat(None)), (-1, 7))
@@ -43,6 +43,8 @@ def compare_trajectories(traj, traj_file, plots=True):
     other_pts = read_trajectory(traj_file)
     other_pts_n, _ = other_pts.shape
 
+    print
+    
     if traj_pts_n != other_pts_n:
         n = min(traj_pts_n, other_pts_n)
         print 'There is a length mismatch in trajectories:'
@@ -56,14 +58,21 @@ def compare_trajectories(traj, traj_file, plots=True):
     # Truncate trajectories to same length, for computing deltas
     traj_pts = traj_pts[:n, :]
     other_pts = other_pts[:n, :]
-    
+
     # maximum values for each column
     norm = np.amax(abs(traj_pts - other_pts), axis=0)
+    rms = np.sqrt(np.sum((traj_pts - other_pts)**2, axis=0)/n)
+
+    print
     
-    pa = ActorRef('PlotActor')
-    pa.send({'tag': 'plot',
-             'plots': plots,
-             'traj': traj_pts.tolist(),
-             'other_traj': other_pts.tolist()})
-    pa.destroy_ref()
+    for i, label in enumerate(['Time', 'X', 'Y', 'Z', 'Theta', 'Phi', 'Rho']):
+        print '%-5s: dist = %7.3f, rms = %7.3f' %(label, norm[i], rms[i])
+        
+    # send data to plot actor
+    if plots:
+        pa = ActorRef('PlotActor')
+        pa.send({'tag': 'plot',
+                 'traj': traj_pts.tolist(),
+                 'other_traj': other_pts.tolist()})
+        pa.destroy_ref()
     
