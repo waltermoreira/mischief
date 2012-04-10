@@ -41,23 +41,9 @@ class PlotActor(Actor):
         try:
             while True:
                 self.receive({'quit': self.quit,
-                              'test': self.test,
-                              'tight': self.tight,
                               'plot': self.plot})
         except StopIteration:
             return
-
-    def test(self, msg):
-        fig, axs = plt.subplots(nrows=2, ncols=7)
-        axs[0,0].plot([1,2,3,5])
-        plt.draw()
-        print 'drawn'
-        plt.show()
-        print 'shown'
-
-    def tight(self, msg):
-        print 'tighting'
-        plt.tight_layout(pad=0.3, w_pad=0.3, h_pad=0.3)
 
     def _do_plot(self, data, other_data, ax, label):
         ax.plot(data)
