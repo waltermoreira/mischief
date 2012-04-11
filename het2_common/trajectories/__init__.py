@@ -6,6 +6,7 @@ import numpy as np
 from itertools import *
 from ..trajectories import plot_actor
 from pycommon.actors.actor import ActorRef
+from pycommon.colors import *
 
 @accept_context
 def _read_traj_file(filename):
@@ -81,7 +82,7 @@ def compare_trajectories(traj, traj_file, plots=True, tolerances=None):
     print 'x: %f %f' %(traj_pts[0,0], other_pts[0,0])
 
     for i, label in enumerate(['Time', 'X', 'Y', 'Z', 'Theta', 'Phi', 'Rho']):
-        score = '.PASS.' if norm[i] < tolerances[i] else '_FAIL_'
+        score = GREEN+'PASS'+RESET if norm[i] < tolerances[i] else RED+'FAIL'+RESET
         print ('%-5s: dist = %f, rms = %f, tol = %f  %s'
                %(label, norm[i], rms[i], tolerances[i], score))
         
