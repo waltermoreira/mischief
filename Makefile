@@ -14,6 +14,8 @@ het2_common/time/het2_time.py het2_common/time/het2_time_wrap.cxx: het2_common/t
 
 install: all
 	$(PYTHON) setup.py install --prefix=$(HET2_DEPLOY)
+	mkdir -p $(HET2_DEPLOY)/test/trajectory_tests
+	cp het2_common/trajectories/tolerances.json.example $(HET2_DEPLOY)/test/trajectory_tests/
 
 debug: all
 
