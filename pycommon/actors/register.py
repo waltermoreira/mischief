@@ -18,10 +18,15 @@ class Register(ProcessActor):
                 self.receive({'register': self.register,
                               'unregister': self.unregister,
                               'killall': self.killall,
+                              'list': self.list,
                               'quit': self.quit})
         except StopIteration:
             return
 
+    def list(self, msg):
+        for pid, name in self.processes.items():
+            print '%5d: %s' %(pid, name)
+            
     def register(self, msg):
         pid = msg['pid']
         name = msg['name']
