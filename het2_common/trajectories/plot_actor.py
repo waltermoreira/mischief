@@ -85,6 +85,12 @@ if __name__ == '__main__':
     wait.send({'tag': 'ok'})
     wait.destroy_ref()
 
+    reg = ActorRef('Register')
+    reg.send({'tag': 'register',
+              'pid': os.getpid(),
+              'name': actor.name})
+    reg.destroy_ref()
+    
     actor.act()
 
     actor_ref = ActorRef(actor.name)
