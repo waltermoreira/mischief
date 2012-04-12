@@ -32,10 +32,11 @@ class ProcessActor(Actor):
     launch = True
     
     def __init__(self, *args, **kwargs):
-        super(ProcessActor, self).__init__(*args, **kwargs)
         if self.launch:
             start_actor(self.__class__.__name__,
                         self.__class__.__module__)
+        else:
+            super(ProcessActor, self).__init__(*args, **kwargs)
 
 class WaitActor(Actor):
     """
