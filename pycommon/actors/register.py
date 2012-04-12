@@ -32,13 +32,16 @@ class Register(ProcessActor):
         name = msg['name']
         self.processes[pid] = name
 
-    def unregister(self, msg):
-        pid = msg['pid']
+    def _unregister(self, pid):
         try:
             del self.processes[pid]
         except KeyError:
             pass
-
+        
+    def unregister(self, msg):
+        pid = msg['pid']
+        self._unregister(pid)
+        
     def killall(self, msg):
         for pid, name in self.processes.items():
             try:
@@ -49,6 +52,7 @@ class Register(ProcessActor):
                 os.kill(pid, signal.SIGKILL)
             except OSError:
                 pass
+            self._unregister(pid)
 
     def quit(self, msg):
         raise StopIteration
