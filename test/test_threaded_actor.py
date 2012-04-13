@@ -72,3 +72,17 @@ def test_unnamed(qm):
     x = a()
     assert x.me()[-17:] == str(uuid.uuid1().hex)[-17:]
         
+def test_new_api(qm):
+    class a(Actor):
+        def act(self):
+            self.receive({'foo': self.foo})
+            return self._msg
+        def foo(self, msg):
+            self._msg = msg
+    x = a()
+    qx = ActorRef(x.name)
+    qx.foo(bar=5, baz='baz')
+    msg = x.act()
+    assert (msg['tag'] == 'foo' and
+            msg['bar'] == 5 and
+            msg['baz'] == 'baz')

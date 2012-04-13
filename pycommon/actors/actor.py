@@ -46,7 +46,19 @@ class ActorRef(object):
     def __init__(self, name):
         self.name = name
         self.q = Pipe(name, 'w')
-        
+        self._tag = None
+
+    def __getattr__(self, attr):
+        self._tag = attr
+        return self
+
+    def __call__(self, *args, **kwargs):
+        if self._tag is None:
+            raise TypeError("actor is not callable")
+        msg = {'tag': self._tag}
+        msg.update(kwargs)
+        self.send(msg)
+            
     def send(self, msg):
         """
         Send a message to the actor represented by this reference.
