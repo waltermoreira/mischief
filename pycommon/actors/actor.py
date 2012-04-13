@@ -58,6 +58,7 @@ class ActorRef(object):
         msg = {'tag': self._tag}
         msg.update(kwargs)
         self.send(msg)
+        self._tag = None
             
     def send(self, msg):
         """

@@ -1,5 +1,6 @@
 from pycommon.actors.actor import Actor, ActorRef
 import uuid
+import py
 
 def test_reply(qm):
     class a(Actor):
@@ -86,3 +87,14 @@ def test_new_api(qm):
     assert (msg['tag'] == 'foo' and
             msg['bar'] == 5 and
             msg['baz'] == 'baz')
+
+def test_new_api_2(qm):
+    class a(Actor):
+        pass
+    x = a()
+    qx = ActorRef(x.name)
+    with py.test.raises(TypeError):
+        qx()
+    qx.foo()
+    with py.test.raises(TypeError):
+        qx()
