@@ -11,13 +11,16 @@ import numpy as np
 def ensure_running():
     try:
         ActorRef('PlotActor')
+        print 'there is a plot actor'
         return
     except OSError:
+        print 'no plot actor, will start one'
         start_actor()
+        print 'started'
 
 class WaitActor(Actor):
     def __init__(self):
-        super(WaitActor, self).__init__(prefix='plot_actor_wait')
+        super(WaitActor, self).__init__()
         
     def act(self):
         self.receive({'ok': lambda msg: None})
@@ -28,7 +31,10 @@ def start_actor():
         myself = myself[:-1]
     w = WaitActor()
     p = subprocess.Popen(['python', myself, w.name])
+    print 'launched process'
+    print ' now waiting'
     w.act()
+    print 'wait got ok'
     w.destroy_actor()
 
     
@@ -40,6 +46,7 @@ class PlotActor(Actor):
     def act(self):
         try:
             while True:
+                print 'About to receive'
                 self.receive({'quit': self.quit,
                               'plot': self.plot})
         except StopIteration:
@@ -85,11 +92,13 @@ if __name__ == '__main__':
     wait.send({'tag': 'ok'})
     wait.destroy_ref()
 
+    print 'Wait destroyed'
     reg = ActorRef('Register')
     reg.send({'tag': 'register',
               'pid': os.getpid(),
               'name': actor.name})
     reg.destroy_ref()
+    print 'Actor registered'
     
     actor.act()
 
