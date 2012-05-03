@@ -10,8 +10,9 @@ import numpy as np
 
 def ensure_running():
     try:
-        ActorRef('PlotActor')
+        p = ActorRef('PlotActor')
         print 'there is a plot actor'
+        p.destroy_ref()
         return
     except OSError:
         print 'no plot actor, will start one'
