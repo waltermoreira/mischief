@@ -47,8 +47,6 @@ def read_tolerances():
         
 @accept_context
 def compare_trajectories(traj, traj_file, plots=True, tolerances=None):
-    plot_actor.ensure_running()
-    
     traj_pts = np.reshape(np.array(traj.getPtsFlat(None)), (-1, 7))
     traj_pts_n, _ = traj_pts.shape
 
@@ -88,6 +86,7 @@ def compare_trajectories(traj, traj_file, plots=True, tolerances=None):
         
     # send data to plot actor
     if plots:
+        plot_actor.ensure_running()
         pa = ActorRef('PlotActor')
         pa.send({'tag': 'plot',
                  'tolerances': tolerances,
