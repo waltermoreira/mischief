@@ -5,12 +5,16 @@ endif
 SWIG=$(HET2_AUXIL)/swig/bin/swig
 PYTHON=$(HET2_AUXIL)/Python/bin/python
 COMMON_DIR=$(HET2_WKSP)/common
+CJSON_DIR=$(HET2_AUXIL)/cJSON
 
-all: het2_common/time/het2_time.py het2_common/time/het2_time_wrap.cxx
+all: het2_common/time/het2_time.py het2_common/time/het2_time_wrap.cxx het2_common/cjson/het2_cjson.py het2_common/cjson/het2_cjson_wrap.cxx
 	$(PYTHON) setup.py build
 
 het2_common/time/het2_time.py het2_common/time/het2_time_wrap.cxx: het2_common/time/het2_time.i
 	(cd het2_common/time; $(SWIG) -python -c++ -I$(COMMON_DIR)/include het2_time.i)
+
+het2_common/cjson/het2_cjson.py het2_common/cjson/het2_cjson_wrap.cxx: het2_common/cjson/het2_cjson.i
+	(cd het2_common/cjson; $(SWIG) -python -c++ -I$(CJSON_DIR) het2_cjson.i)
 
 install: all
 	$(PYTHON) setup.py install --prefix=$(HET2_DEPLOY)
