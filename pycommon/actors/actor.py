@@ -175,6 +175,12 @@ class Actor(object):
                 self.my_log('[Actor %s] checking inbox with timeout:'
                             '%s' %(self.name, inbox_polling))
                 msg = self.inbox.get(timeout=inbox_polling)
+                if msg == '_quit':
+                    self.my_log('[Actor %s] got __quit')
+                    # Special token to unlock actors.  Raise
+                    # 'StopIteration' to break loops where the receive
+                    # function is.
+                    raise StopIteration
                 checked_objects += 1
                 self.my_log('[Actor %s] got object: %s' %(self.name, msg))
                 self.my_log('[...     ] in receive: %s' %(patterns,))
