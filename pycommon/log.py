@@ -101,7 +101,7 @@ def setup_log(mod_name, deploy_dir):
 
     formatter = logging.Formatter(
         "%(asctime)s %(levelname)-8s "
-        "[%(filename)30s:%(lineno)-4s] "
+        "[%(filename)15s:%(process)d(%(thread)d):%(lineno)-4s] "
         "- %(message)s")
 
     file_handler.setFormatter(formatter)
