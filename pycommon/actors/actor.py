@@ -56,7 +56,6 @@ class ActorRef(object):
         self._tag = None
 
     def __getattr__(self, attr):
-        print 'They are asking for', attr
         self._tag = attr
         return self
 
