@@ -38,6 +38,9 @@ from pycommon import log
 
 logger = log.setup('actor', 'to_file')
 
+class ActorException(Exception):
+    pass
+    
 class ActorRef(object):
     """
     An actor reference.
@@ -45,10 +48,15 @@ class ActorRef(object):
     
     def __init__(self, name):
         self.name = name
-        self.q = Pipe(name, 'w')
+        try:
+            self.q = Pipe(name, 'w')
+        except OSError:
+            self.q = None
+            raise ActorException('Reference to a non-existent actor: %s' %name)
         self._tag = None
 
     def __getattr__(self, attr):
+        print 'They are asking for', attr
         self._tag = attr
         return self
 
@@ -77,10 +85,12 @@ class ActorRef(object):
         return self.name
 
     def destroy_ref(self):
-        self.q.close()
+        if self.q is not None:
+            self.q.close()
 
     def destroy_actor(self):
-        self.q.destroy()
+        if self.q is not None:
+            self.q.destroy()
 
     def __del__(self):
         try:
