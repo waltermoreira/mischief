@@ -19,6 +19,7 @@ implements the method ``act()``::
 .. _actor model: http://en.wikipedia.org/wiki/Actor_model
 """
 
+import pprint
 import multiprocessing as m
 import threading
 import logging
@@ -247,16 +248,20 @@ class ThreadedActor(Actor):
         self.thread.daemon = True
         self.thread.start()
 
+class Echo(ThreadedActor):
+    """
+    Convenience actor to display responses from other actors.
+
+    Use by directing 'reply_to' to this actor.
+    """
+    
+    def __init__(self):
+        super(Echo, self).__init__(name='echo')
         
-class Test(Actor):
     def act(self):
-        self.receive(
-            {'foo': lambda *args: None,
-             'bar': 'bar'})
+        while True:
+            self.receive({'*': self.echo})
 
-    def bar(self, msg):
-        print 'bar', msg
-        self.receive({'baz': 'baz'})
-
-    def baz(self, msg):
-        print 'baz', msg
+    def echo(self, msg):
+        print '[Echo]'
+        pprint.pprint(msg, width=1)
