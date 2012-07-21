@@ -1,4 +1,4 @@
-from pycommon.actors.actor import Actor, ActorRef
+from pycommon.actors.actor import Actor, ActorRef, ThreadedActor
 import uuid
 import py
 
@@ -98,3 +98,38 @@ def test_new_api_2(qm):
     qx.foo()
     with py.test.raises(TypeError):
         qx()
+
+def test_many_msgs(qm):
+    # Send many msgs to one actor, collect them and count them
+    class a(ThreadedActor):
+        def __init__(self):
+            super(a, self).__init__(name='foo')
+            self.results = {}
+        def act(self):
+            while True:
+                self.receive({'add': self.add})
+        def add(self, msg):
+            self.results[msg['i']] = 1
+            if sorted(self.results.keys()) == range(100):
+                sender = ActorRef(msg['reply_to'])
+                sender.got_all()
+                sender.destroy_ref()
+    class b(Actor):
+        def act(self):
+            result = []
+            self.receive({'got_all': lambda msg: result.append(True),
+                          'timeout': lambda msg: result.append(False)},
+                         timeout=2)
+            return result
+    # Create many instances to check the pipes are refreshed for each instance
+    x = a()
+    x = a()
+    x = a()
+    x = a()
+    y = b()
+    x_ref = ActorRef(x.me())
+    for i in range(100):
+        x_ref.add(i=i, reply_to=y.me())
+    res = y.act()
+    assert res == [True]
+    
