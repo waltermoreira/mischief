@@ -49,7 +49,14 @@ class Pipe(object):
         self.reader_queue = None
         self.reader_thread = None
         self.path = self._path_to(name)
-        if create and not os.path.exists(self.path):
+        if create:
+            try:
+                # Make sure there is no previous pipe with the same name.
+                # Otherwise, multiple clients may be reading from the same pipe.
+                os.unlink(self.path)
+            except OSError:
+                # ignore if the pipe doesn't yet exist
+                pass
             logger.debug('mkfifo %s' %(self.path,))
             os.mkfifo(self.path)
         self.mode = mode
