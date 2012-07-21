@@ -1,6 +1,7 @@
 from itertools import izip_longest, imap
 from gevent import sleep
 from Queue import Queue
+import select
 import time
 import struct
 import select
@@ -149,6 +150,7 @@ class Pipe(object):
             raise Exception('pipe already open for writing')
         first_char = None
         try:
+            local_modules['select'].select([self.fd], [], [])
             first_char = self.fd.read(1)
             if first_char == '}':
                 # cannot be a JSON, so we are reading a split big
