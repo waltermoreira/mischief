@@ -144,7 +144,7 @@ class Pipe(object):
         # are read and concatenated
         return None
         
-    def _read(self):
+    def _read(self, local_modules):
         if self.mode == 'w':
             raise Exception('pipe already open for writing')
         first_char = None
@@ -153,29 +153,26 @@ class Pipe(object):
             if first_char == '}':
                 # cannot be a JSON, so we are reading a split big
                 # chunk of data
-                data = first_char + self.fd.read(struct.calcsize(self.STRUCT)-1)
+                data = first_char + self.fd.read(
+                    local_modules['struct'].calcsize(self.STRUCT)-1)
                 return self._split_read(data)
             else:
                 # read a full line, and decode it as json
                 data = first_char + self.fd.readline()
-                return json.loads(data)
+                return local_modules['json'].loads(data)
         except IOError as err:
-            if err.errno == errno.EWOULDBLOCK:
-                # No data from clients
-                if first_char is not None:
-                    logger.debug('[Pipe %s] no data for client (first_char = %s' %(self.name, first_char))
-                return None
-            # do not ignore other kind of ioerrors
-            raise
+            print 'IOError!'
+            local_modules['logger'].debug(
+                '[Pipe %s] I/O error on pipe (probably shutting down, will ignore)' %self.name)
 
-    def _read_full(self):
+    def _read_full(self, local_modules):
         # Try to read data until we get an object. If there is
         # data and it is a simple json object, it will return
         # immediatly. Otherwise, it will block and keep waiting or
         # reading parts of a multi-part message until it is
         # complete
         while True:
-            data = self._read()
+            data = self._read(local_modules)
             if data is not None:
                 return data
             time.sleep(0.01)
@@ -214,19 +211,28 @@ class Pipe(object):
         self.reader_thread.start()
         
     def _reader(self, queue):
+        # Pass around list of modules as local variable, because it's
+        # not good for thread to access the global environment
+        local_modules = {
+            'logger': logger,
+            'traceback': traceback,
+            'errno': errno,
+            'struct': struct,
+            'json': json,
+            'select': select}
         try:
             while True:
-                data = self._read_full()
+                data = self._read_full(local_modules)
                 if data == '__quit':
                     return
-                logger.debug('reading from pipe %s into python queue' %(self.name,))
-                logger.debug('  before inserting: size(queue) = %s' %(queue.qsize()))
+                local_modules['logger'].debug('reading from pipe %s into python queue' %(self.name,))
+                local_modules['logger'].debug('  before inserting: size(queue) = %s' %(queue.qsize()))
                 queue.put(data)
-                logger.debug('  after inserting: size(queue) = %s' %(queue.qsize()))
+                local_modules['logger'].debug('  after inserting: size(queue) = %s' %(queue.qsize()))
                 
         except ValueError:
-            logger.debug('reader thread exiting because of ValueError')
-            logger.debug(traceback.format_exc())
+            local_modules['logger'].debug('reader thread exiting because of ValueError')
+            local_modules['logger'].debug(local_modules['traceback'].format_exc())
             # file descriptor closed, just exit
             return
             
