@@ -193,7 +193,9 @@ class Pipe(object):
             return x
         except AttributeError:
             raise Exception('pipe closed')
-
+        except KeyboardInterrupt:
+            pass
+            
     # synonym
     get = read
     
