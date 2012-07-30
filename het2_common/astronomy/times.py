@@ -35,7 +35,7 @@ def datetime_to_mjd(utc):
 
 def utc_to_tt(utc):
     """Convert utc to terrestrial time"""
-    return utc + pySlalibC.slaDtt(utc)/(24*60*60)
+    return utc + s.slaDtt(utc)/(24*60*60)
     
 def rad_to_hms(rad):
     sign = s.charp()
