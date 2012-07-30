@@ -32,5 +32,6 @@ setup(name='het2_common',
       packages=['het2_common',
                 'het2_common.time',
                 'het2_common.trajectories',
+                'het2_common.astronomy',
                 'het2_common.cjson'],
       )
