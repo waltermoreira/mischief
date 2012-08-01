@@ -1,3 +1,8 @@
+"""
+Simple helper functions to reuse the tedious loops we need to write
+for GSL functions.
+"""
+
 import pygsl.roots
 import pygsl.errno
 
