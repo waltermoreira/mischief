@@ -28,3 +28,26 @@ def fdf_root(f, df, fdf, seed,
 
     raise GSLException('solver exceeded number of iterations')
 
+
+def multi_minimize(f, n, seed, steps,
+                   params=None,
+                   max_iter=100, eps=0.01):
+    """
+    Find a minimum for the function `f` in `n` variables
+    """
+    system = pygsl.multiminimize.gsl_multimin_function(f, params, n)
+    solver = pygsl.multiminimize.nmsimplex(system, n)
+
+    start_point = seed
+    initial_steps = steps
+    solver.set(start_point, initial_steps)
+
+    for i in range(max_iter):
+        status = solver.iterate()
+        if status != pygsl.errno.GSL_SUCCESS:
+            raise GSLException("solver.iterate returned %s" %status)
+        status = pygsl.multiminimize.test_size(solver.size(), eps)
+        if status == pygsl.errno.GSL_SUCCESS:
+            return solver.getx()
+
+    raise GSLException('solver exceeded number of iterations')
