@@ -40,7 +40,7 @@ def utc_to_tt(utc):
 def rad_to_hms(rad):
     sign = s.charp()
     ihmsf = s.ivec(4)
-    s.slaCr2tf(NDP, rad, sign, ihmsf)
+    s.slaDr2tf(NDP, rad, sign, ihmsf)
     return (sign.value(), ihmsf[0], ihmsf[1], ihmsf[2], ihmsf[3])
 
 def sexagesimal_to_rad(string):
