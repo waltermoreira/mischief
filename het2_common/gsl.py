@@ -8,7 +8,7 @@ def fdf_root(f, df, fdf, seed,
              method='steffenson', params=None,
              max_iter=100, eps_abs=0.01, eps_rel=0.0):
     """
-    Find a root for the function `f`
+    Find a root for the function `f`, using derivatives
     """
     function = pygsl.roots.gsl_function_fdf(f, df, fdf, params)
     solver_method = getattr(pygsl.roots, method)
