@@ -5,6 +5,8 @@ for GSL functions.
 
 import pygsl.roots
 import pygsl.errno
+import pygsl.minimize
+import pygsl.multiminimize
 
 class GSLException(Exception):
     pass
@@ -56,3 +58,24 @@ def multi_minimize(f, n, seed, steps,
             return solver.getx()
 
     raise GSLException('solver exceeded number of iterations')
+
+def minimize(f, m, a, b, params=None, max_iter=100, eps_abs=0.01, eps_rel=0.0):
+    """
+    Find minimum of a function in one variable
+    """
+    system = pygsl.minimize.gsl_function(f, params)
+    minimizer = pygsl.minimize.brent(system)
+    minimizer.set(m, a, b)
+
+    for i in range(max_iter):
+        status = minimizer.iterate()
+        if status != pygsl.errno.GSL_SUCCESS:
+            raise GSLException('minimizer.iterate returned %s' %status)
+        a = minimizer.x_lower()
+        b = minimizer.x_upper()
+        m = minimizer.minimum()
+        status = pygsl.minimize.test_interval(a, b, eps_abs, eps_rel)
+        if status == pygsl.errno.GSL_SUCCESS:
+            return m
+
+    raise GSLException('minimizer exceeded number of iterations')
