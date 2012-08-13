@@ -4,9 +4,11 @@ for GSL functions.
 """
 
 import pygsl.roots
+import pygsl.multiroots
 import pygsl.errno
 import pygsl.minimize
 import pygsl.multiminimize
+import numpy
 
 class GSLException(Exception):
     pass
@@ -35,7 +37,30 @@ def fdf_root(f, df, fdf, seed,
 
     raise GSLException('solver exceeded number of iterations')
 
+def f_multi_root(f, n, seed, method='hybrids', params=None,
+                 max_iter=100, eps_abs=0.01):
+    """
+    Find a root for the system of equations `f = 0`, of `n`
+    equations and `n` unknowns.
+    """
+    system = pygsl.multiroots.gsl_multiroot_function(f, params, n)
+    solver_method = getattr(pygsl.multiroots, method)
+    solver = solver_method(system, n)
+    solver.set(numpy.array(seed))
 
+    for i in range(max_iter):
+        status = solver.iterate()
+        print solver.getx(), solver.getf()
+        if status != pygsl.errno.GSL_SUCCESS:
+            raise GSLException("solver.iterate returned %s" %status)
+        y = solver.getf()
+        status = pygsl.multiroots.test_residual(y, eps_abs)
+        if status == pygsl.errno.GSL_SUCCESS:
+            return solver.getx()
+
+    raise GSLException('solver exceeded number of iterations')
+    
+    
 def multi_minimize(f, n, seed, steps,
                    params=None,
                    max_iter=100, eps=0.01):
