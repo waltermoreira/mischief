@@ -8,6 +8,7 @@ COMMON_DIR=$(HET2_WKSP)/common
 CJSON_DIR=$(HET2_AUXIL)/cJSON
 
 all: het2_common/time/het2_time.py het2_common/time/het2_time_wrap.cxx het2_common/cjson/het2_cjson.py het2_common/cjson/het2_cjson_wrap.cxx
+	mkdir -p $(HET2_DEPLOY)/lib/run/actor_pipes
 	$(PYTHON) setup.py build
 
 het2_common/time/het2_time.py het2_common/time/het2_time_wrap.cxx: het2_common/time/het2_time.i
@@ -20,6 +21,9 @@ install: all
 	$(PYTHON) setup.py install --prefix=$(HET2_DEPLOY)
 	mkdir -p $(HET2_DEPLOY)/test/trajectory_tests
 	cp het2_common/trajectories/tolerances.json.example $(HET2_DEPLOY)/test/trajectory_tests/
+	mkdir -p $(HET2_DEPLOY)/lib/run/actor_pipes
+	cp py_logging.conf.example $(HET2_DEPLOY)/etc
+
 
 debug: all
 
@@ -30,3 +34,6 @@ clean:
 	rm -rf *.pyc
 	rm -rf het2_common/time/.so
 	rm -rf het2_common/time/het2_time.py
+
+doc:
+	$(MAKE) html --directory=doc
