@@ -1,4 +1,4 @@
-from pycommon.actors.actor import Actor, ActorRef, ThreadedActor
+from het2_common.actors.actor import Actor, ActorRef, ThreadedActor
 import uuid
 import py
 

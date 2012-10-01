@@ -1,4 +1,4 @@
-from pycommon.actors.actor import Actor, ActorRef
+from het2_common.actors.actor import Actor, ActorRef
 import subprocess
 import os.path
 import sys

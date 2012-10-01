@@ -1,4 +1,4 @@
-from pycommon.actors.actor import Actor, ActorRef, ActorException
+from het2_common.actors.actor import Actor, ActorRef, ActorException
 import py
 
 def test_non_existent_actor(qm):

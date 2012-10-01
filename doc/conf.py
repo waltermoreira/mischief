@@ -211,7 +211,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'pycommon', u'PyCommon Documentation',
+    ('index', 'het2_common', u'PyCommon Documentation',
      [u'Walter Moreira'], 1)
 ]
 

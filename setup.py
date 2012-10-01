@@ -7,6 +7,6 @@ setup(name='PyCommon',
       description='HET2 Common utilities for GUI and Logger',
       author='Walter Moreira',
       author_email='moreira@astro.as.utexas.edu',
-      packages=['pycommon',
-                'pycommon.actors'],
+      packages=['het2_common',
+                'het2_common.actors'],
      )

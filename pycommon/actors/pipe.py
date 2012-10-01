@@ -11,7 +11,7 @@ import errno
 import os
 import threading
 import traceback
-from pycommon import log
+from het2_common import log
 
 logger = log.setup('pipe', 'to_file')
 

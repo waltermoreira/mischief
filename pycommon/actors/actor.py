@@ -1,5 +1,5 @@
 """
-:mod:`pycommon.actors.actor` -- Actor library
+:mod:`het2_common.actors.actor` -- Actor library
 =============================================
 
 .. module:: actor
@@ -32,7 +32,7 @@ import time
 import uuid
 import socket
 from pipe import Pipe
-from pycommon import log
+from het2_common import log
 
 # multiproc_logger = m.log_to_stderr()
 # multiproc_logger.setLevel(m.SUBDEBUG)

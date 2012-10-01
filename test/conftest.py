@@ -1,4 +1,4 @@
-from pycommon.actors.actor import ThreadedActor, ActorRef
+from het2_common.actors.actor import ThreadedActor, ActorRef
 import multiprocessing
 import signal
 import time

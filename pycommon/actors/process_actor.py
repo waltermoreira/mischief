@@ -7,7 +7,7 @@ run in an independent process.
 
 Use as::
 
-    from pycommon.actors.process_actor import ProcessActor
+    from het2_common.actors.process_actor import ProcessActor
 
     class MyActor(ProcessActor):
 
@@ -18,7 +18,7 @@ Use as::
 
 """
 
-from pycommon.actors.actor import Actor, ActorRef
+from het2_common.actors.actor import Actor, ActorRef
 import importlib
 import os
 import sys

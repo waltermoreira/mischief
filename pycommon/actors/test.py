@@ -1,4 +1,4 @@
-from pycommon.actors.process_actor import ProcessActor
+from het2_common.actors.process_actor import ProcessActor
 
 class Foo(ProcessActor):
 

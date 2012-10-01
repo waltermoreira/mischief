@@ -1,5 +1,5 @@
-from pycommon.actors.process_actor import ProcessActor
-from pycommon.actors.actor import ActorRef
+from het2_common.actors.process_actor import ProcessActor
+from het2_common.actors.actor import ActorRef
 import os
 import signal
 
