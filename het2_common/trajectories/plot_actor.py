@@ -5,7 +5,7 @@ import matplotlib
 matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
 import matplotlib.ticker
-from pycommon.actors.actor import Actor, ActorRef
+from het2_common.actors.actor import Actor, ActorRef
 import numpy as np
 
 def ensure_running():

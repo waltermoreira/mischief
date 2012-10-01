@@ -5,8 +5,8 @@ from het2_common.context import accept_context
 import numpy as np
 from itertools import *
 from ..trajectories import plot_actor
-from pycommon.actors.actor import ActorRef
-from pycommon.colors import *
+from het2_common.actors.actor import ActorRef
+from het2_common.colors import *
 
 @accept_context
 def _read_traj_file(filename):
