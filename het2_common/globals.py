@@ -8,6 +8,8 @@ HET2_DEPLOY = abspath(join(cwd, '../../../'))
 DEGREES = math.pi/180.0
 # radians to degrees
 RADIANS = 180.0/math.pi
+# arcsecs to radians
+ARCSECONDS = math.pi/(180.0*60*60)
 
 # seconds to mjd
 SECONDS = 1.0/(24*60*60)
