@@ -68,7 +68,12 @@ class Pipe(object):
             raise Exception("unknown mode. Should be 'r' or 'w'")
 
     def qsize(self):
-        return self.reader_queue.qsize()
+        try:
+            return self.reader_queue.qsize()
+        except AttributeError:
+            # On shutdown, thread will set reader_queue to None,
+            # ignore it
+            pass
         
     def close(self):
         """
