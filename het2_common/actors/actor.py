@@ -31,6 +31,8 @@ import signal
 import time
 import uuid
 import socket
+import inspect
+import psutil
 from pipe import Pipe
 from het2_common import log
 
@@ -113,7 +115,7 @@ class Actor(object):
     
     def __init__(self, name=None, prefix=''):
         self.name = name or ('actor_' + prefix + '_' +
-                             str(uuid.uuid1().hex))
+                             str(uuid.uuid1().hex) + '_' + self.my_id(inspect.stack()[2]))
         logger.debug('[Actor %s] creating my inbox' %(self.name,))
         self.inbox = Pipe(self.name, 'r', create=True)
         # open a write connection to inbox, to restore messages that
@@ -124,13 +126,17 @@ class Actor(object):
         else:
             self.my_log = logger.debug
 
+    def my_id(self, frame_record):
+        frame, f, lineno, fun = frame_record[0:4]
+        return '%s_%s_%s' %(os.path.basename(f), lineno, fun)
+        
     def __del__(self):
         try:
             logger.debug('Finalizing actor %s' %self.name)
             self.destroy_actor()
         except:
             pass
-        
+
     def me(self):
         return self.name
 
