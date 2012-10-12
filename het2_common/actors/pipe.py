@@ -197,7 +197,9 @@ class Pipe(object):
             logger.debug('reader queue for %s got %s' %(self.name, x))
             return x
         except AttributeError:
-            raise Exception('pipe closed')
+            # Pipe is closing, reader_queue is set to None
+            # ignore it
+            pass
         except KeyboardInterrupt:
             pass
             
