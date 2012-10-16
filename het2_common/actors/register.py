@@ -12,17 +12,13 @@ class Register(ProcessActor):
         super(Register, self).__init__('Register')
         self.processes = {}
 
-    def act(self):
-        try:
-            while True:
-                self.receive({'register': self.register,
-                              'unregister': self.unregister,
-                              'killall': self.killall,
-                              'list': self.list,
-                              'quit': self.quit})
-        except StopIteration:
-            return
-
+    def process_act(self):
+        self.receive({'register': self.register,
+                      'unregister': self.unregister,
+                      'killall': self.killall,
+                      'list': self.list,
+                      'quit': self.quit})
+        
     def list(self, msg):
         for pid, name in self.processes.items():
             print '%5d: %s' %(pid, name)
@@ -54,5 +50,3 @@ class Register(ProcessActor):
                 pass
             self._unregister(pid)
 
-    def quit(self, msg):
-        raise StopIteration
