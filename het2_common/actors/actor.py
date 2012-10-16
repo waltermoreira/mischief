@@ -63,9 +63,21 @@ class ActorRef(object):
         return self
 
     def __enter__(self):
+        """
+        An actor reference is also a context manager. It destroys
+        itself on exit.
+
+        Use as::
+
+            with ActorRef('foo') as foo:
+                ...
+        """
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        """
+        ActorRef destroy itself if used as a context manager.
+        """
         self.destroy_ref()
         
     def __call__(self, *args, **kwargs):
