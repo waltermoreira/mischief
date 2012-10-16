@@ -1,4 +1,5 @@
 from os.path import dirname, abspath, join
+import os
 import math
 
 cwd = dirname(abspath(__file__))
@@ -13,3 +14,5 @@ ARCSECONDS = math.pi/(180.0*60*60)
 
 # seconds to mjd
 SECONDS = 1.0/(24*60*60)
+
+DEPLOY_PATH = os.environ['HET2_DEPLOY']
