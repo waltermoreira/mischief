@@ -52,7 +52,7 @@ class ProcessActor(Actor):
     def process_act(self):
         raise NotImplementedError
         
-    def quit(self):
+    def quit(self, msg):
         """
         Provide a way to break standard 'act' loop.
         """
