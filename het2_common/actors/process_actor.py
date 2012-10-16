@@ -38,6 +38,26 @@ class ProcessActor(Actor):
         else:
             super(ProcessActor, self).__init__(*args, **kwargs)
 
+    def act(self):
+        """
+        If not overloaded, provide a basic act loop that can be
+        customized through 'process_act'.
+        """
+        try:
+            while True:
+                self.process_act()
+        except StopIteration:
+            return
+
+    def process_act(self):
+        raise NotImplementedError
+        
+    def quit(self):
+        """
+        Provide a way to break standard 'act' loop.
+        """
+        raise StopIteration
+
 class WaitActor(Actor):
     """
     Actor to wait for a message from the client's class saying that
