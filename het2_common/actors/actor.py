@@ -62,6 +62,12 @@ class ActorRef(object):
         self._tag = attr
         return self
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.destroy_ref()
+        
     def __call__(self, *args, **kwargs):
         if self._tag is None:
             raise TypeError("actor is not callable")
