@@ -66,13 +66,6 @@ def test_read_value(qm):
     qm.send({'tag': 'ack', 'foo': 5})
     assert x.act() == 5
 
-def test_unnamed(qm):
-    class a(Actor):
-        def act(self):
-            return self.me()
-    x = a()
-    assert x.me()[-17:] == str(uuid.uuid1().hex)[-17:]
-        
 def test_new_api(qm):
     class a(Actor):
         def act(self):
