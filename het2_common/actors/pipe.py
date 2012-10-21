@@ -57,7 +57,10 @@ class Pipe(object):
         print 'closed'
         if self.mode == 'r':
             print 'will unlink'
-            os.unlink(self.path)
+            try:
+                os.unlink(self.path)
+            except OSError:
+                pass
             print 'unlinked'
 
     def write(self, data):
