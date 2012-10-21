@@ -167,6 +167,10 @@ class Actor(object):
         * ``timeout``: is executed when a ``receive`` times out
         
         """
+        # Add internal message handlers
+        patterns['_ping'] = self._pong
+        patterns['_quit'] = self._quit
+        
         inbox_polling = timeout and self.INBOX_POLLING_TIMEOUT
         print('[Actor %s] creating temporary queue' %(self.name,))
         processed = Queue.Queue()
@@ -196,9 +200,6 @@ class Actor(object):
                 print('[Actor %s] empty inbox' %(self.name,))
                 continue
             try:
-                if msg.get('_internal'):
-                    # Special messages for internal operation
-                    self.process_internal(msg)
                 if msg['tag'] in patterns:
                     matched = msg['tag']
                     break
@@ -231,16 +232,16 @@ class Actor(object):
             f = action
         f(msg)
 
-    def process_internal(self, msg):
-        if msg['tag'] == '_quit':
-            print('[Actor %s] got __quit')
-            # Special token to unlock actors.  Raise
-            # 'StopIteration' to break loops where the receive
-            # function is.
-            raise StopIteration
-        if msg['tag'] == '_ping':
-            with ActorRef(msg['reply_to']) as sender:
-                sender._pong()
+    def _quit(self, msg):
+        raise StopIteration
+
+    def _pong(self, msg):
+        print 'method pong', msg
+        sender = ActorRef(msg['reply_to'])
+        print 'will send pong to', sender
+        print ' with pipe', sender.q.name
+        sender._pong()
+        print 'sent'
             
     def act(self):
         """
