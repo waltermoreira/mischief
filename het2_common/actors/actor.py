@@ -51,6 +51,15 @@ class ActorRef(object):
         self.q = Pipe(name, 'w')
         self._tag = None
 
+    def is_alive(self):
+        listener = _ListenerActor()
+        try:
+            self._ping(reply_to=listener.name)
+            listener.wait_pong(timeout=0.1)
+            return listener.pong
+        finally:
+            listener.close()
+        
     def __getattr__(self, attr):
         self._tag = attr
         return self
@@ -252,3 +261,16 @@ class Echo(ThreadedActor):
     def echo(self, msg):
         print '[Echo]'
         pprint.pprint(msg, width=1)
+
+class _ListenerActor(Actor):
+
+    def wait_pong(self, timeout=0):
+        self.receive({'_pong': self.got_pong,
+                      'timeout': self.timed_out},
+                     timeout=timeout)
+
+    def got_pong(self, msg):
+        self.pong = True
+
+    def timed_out(self, msg):
+        self.pong = False
