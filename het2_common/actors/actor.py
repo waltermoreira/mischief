@@ -52,13 +52,13 @@ class ActorRef(object):
         self._tag = None
 
     def is_alive(self):
-        listener = _ListenerActor()
-        try:
+        """
+        Send a ping to the associated actor and wait for a pong
+        """
+        with _ListenerActor() as listener:
             self._ping(reply_to=listener.name)
             listener.wait_pong(timeout=0.1)
             return listener.pong
-        finally:
-            listener.close()
         
     def __getattr__(self, attr):
         self._tag = attr
@@ -157,7 +157,7 @@ class Actor(object):
             setattr(self, value_name, msg[value_name])
         return _f
     
-    def receive(self, patterns, timeout=None):
+    def receive(self, patterns=None, timeout=None, **more_patterns):
         """
         ``patterns`` have the form::
 
@@ -171,6 +171,10 @@ class Actor(object):
         * ``timeout``: is executed when a ``receive`` times out
         
         """
+        if patterns is None:
+            patterns = {}
+        patterns.update(more_patterns)
+        
         # Add internal message handlers
         patterns['_ping'] = self._pong
         patterns['_quit'] = self._quit
@@ -190,7 +194,7 @@ class Actor(object):
             if (checked_objects >= starting_size
                     and timeout is not None
                     and current_time > start_time + timeout):
-                matched = 'timeout'
+                matched = 'timed_out'
                 break
             current_time = time.time()
             try:
@@ -207,8 +211,8 @@ class Actor(object):
                 if msg['tag'] in patterns:
                     matched = msg['tag']
                     break
-                if '*' in patterns:
-                    matched = '*'
+                if '_' in patterns:
+                    matched = '_'
                     break
             except (KeyError, TypeError):
                 print('Wrong message object: %s' %(msg,))
@@ -237,16 +241,24 @@ class Actor(object):
         f(msg)
 
     def _quit(self, msg):
+        """
+        Special method to stop the actor
+
+        Close it, and raise StopIteration to break external loops.
+        """
         self.close()
         raise StopIteration
 
     def _pong(self, msg):
+        """
+        Special method to respond to a ping
+        """
         print 'method pong', msg
-        sender = ActorRef(msg['reply_to'])
-        print 'will send pong to', sender
-        print ' with pipe', sender.q.name
-        sender._pong()
-        print 'sent'
+        with ActorRef(msg['reply_to']) as sender:
+            print 'will send pong to', sender
+            print ' with pipe', sender.q.name
+            sender._pong()
+            print 'sent'
             
     def act(self):
         """
@@ -278,18 +290,24 @@ class Echo(ThreadedActor):
         
     def act(self):
         while True:
-            self.receive({'*': self.echo})
+            self.receive(
+                _ = self.echo)
 
     def echo(self, msg):
         print '[Echo]'
         pprint.pprint(msg, width=1)
 
 class _ListenerActor(Actor):
-
+    """
+    Utility actor to wait for pongs, when an actor ref sends a
+    ping
+    """
+    
     def wait_pong(self, timeout=0):
-        self.receive({'_pong': self.got_pong,
-                      'timeout': self.timed_out},
-                     timeout=timeout)
+        self.receive(
+            _pong = self.got_pong,
+            timed_out = self.timed_out,
+            timeout = timeout)
 
     def got_pong(self, msg):
         self.pong = True
