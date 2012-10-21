@@ -46,6 +46,7 @@ class Pipe(object):
             # force reader thread to finish
             self.push_socket = Context.socket(zmq.PUSH)
             self.push_socket.connect('ipc://%s' %self.path)
+            # send non-json data
             self.push_socket.send('__quit')
             self.push_socket.close()
             print 'sent, will join'
