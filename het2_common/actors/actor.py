@@ -71,7 +71,7 @@ class ActorRef(object):
         """
         ActorRef destroy itself if used as a context manager.
         """
-        self.destroy_ref()
+        pass
         
     def __call__(self, *args, **kwargs):
         if self._tag is None:
@@ -97,20 +97,6 @@ class ActorRef(object):
         """
         return self.name
 
-    def destroy_ref(self):
-        if self.q is not None:
-            self.q.close()
-
-    def destroy_actor(self):
-        if self.q is not None:
-            self.q.destroy()
-
-    def __del__(self):
-        try:
-            print('Finalizing actor_ref for %s' %self.name)
-            self.destroy_ref()
-        except:
-            pass
         
 class Actor(object):
     """
@@ -125,29 +111,17 @@ class Actor(object):
     INBOX_POLLING_TIMEOUT = 0.01
     
     def __init__(self, name=None, prefix=''):
-        self.name = name or ('actor_' + prefix + '_' +
-                             str(uuid.uuid1().hex) + '_' + self.my_id(inspect.stack()[2]))
+        self.name = name or '_'.join(filter(None, ['a', prefix, str(uuid.uuid1().hex)]))
         print 'Creating actor with inbox', self.name
         print('[Actor %s] creating my inbox' %(self.name,))
         self.inbox = Pipe(self.name, 'r')
 
-    def my_id(self, frame_record):
-        frame, f, lineno, fun = frame_record[0:4]
-        return '%s_%s_%s' %(os.path.basename(f), lineno, fun)
-        
-    def __del__(self):
-        try:
-            print('Finalizing actor %s' %self.name)
-            self.destroy_actor()
-        except:
-            pass
-
     def me(self):
         return self.name
 
-    def destroy_actor(self):
-        self.inbox.destroy()
-        
+    def close(self):
+        self.inbox.close()
+    
     def read_value(self, value_name):
         def _f(msg):
             setattr(self, value_name, msg[value_name])
