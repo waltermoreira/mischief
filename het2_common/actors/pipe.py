@@ -76,12 +76,10 @@ class Pipe(object):
     
     def _open_write_pipe(self):
         self.socket = Context.socket(zmq.PUSH)
-        self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.connect('ipc://%s' %self.path)
 
     def _open_read_pipe(self):
         self.socket = Context.socket(zmq.PULL)
-        self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.bind('ipc://%s' %self.path)
         
         self.reader_queue = Queue()
