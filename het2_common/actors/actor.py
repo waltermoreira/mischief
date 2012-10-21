@@ -36,9 +36,6 @@ import psutil
 from pipe import Pipe
 from het2_common import log
 
-# multiproc_logger = m.log_to_stderr()
-# multiproc_logger.setLevel(m.SUBDEBUG)
-
 logger = log.setup('actor', 'to_file')
 
 class ActorException(Exception):
@@ -51,11 +48,7 @@ class ActorRef(object):
     
     def __init__(self, name):
         self.name = name
-        try:
-            self.q = Pipe(name, 'w')
-        except OSError:
-            self.q = None
-            raise ActorException('Reference to a non-existent actor: %s' %name)
+        self.q = Pipe(name, 'w')
         self._tag = None
 
     def __getattr__(self, attr):
@@ -114,7 +107,7 @@ class ActorRef(object):
 
     def __del__(self):
         try:
-            logger.debug('Finalizing actor_ref for %s' %self.name)
+            print('Finalizing actor_ref for %s' %self.name)
             self.destroy_ref()
         except:
             pass
@@ -134,15 +127,9 @@ class Actor(object):
     def __init__(self, name=None, prefix=''):
         self.name = name or ('actor_' + prefix + '_' +
                              str(uuid.uuid1().hex) + '_' + self.my_id(inspect.stack()[2]))
-        logger.debug('[Actor %s] creating my inbox' %(self.name,))
-        self.inbox = Pipe(self.name, 'r', create=True)
-        # open a write connection to inbox, to restore messages that
-        # will not be processed right now (selective receive)
-        self.to_inbox = Pipe(self.name, 'w')
-        if self.name == 'hardware' or self.name.startswith('actor_ScriptWorker_'):
-            self.my_log = lambda *args, **kwargs: None
-        else:
-            self.my_log = logger.debug
+        print 'Creating actor with inbox', self.name
+        print('[Actor %s] creating my inbox' %(self.name,))
+        self.inbox = Pipe(self.name, 'r')
 
     def my_id(self, frame_record):
         frame, f, lineno, fun = frame_record[0:4]
@@ -150,7 +137,7 @@ class Actor(object):
         
     def __del__(self):
         try:
-            logger.debug('Finalizing actor %s' %self.name)
+            print('Finalizing actor %s' %self.name)
             self.destroy_actor()
         except:
             pass
@@ -158,14 +145,7 @@ class Actor(object):
     def me(self):
         return self.name
 
-    def send(self, msg):
-        """
-        Send to myself
-        """
-        self.to_inbox.put(msg)
-        
     def destroy_actor(self):
-        self.to_inbox.close()
         self.inbox.destroy()
         
     def read_value(self, value_name):
@@ -188,12 +168,12 @@ class Actor(object):
         
         """
         inbox_polling = timeout and self.INBOX_POLLING_TIMEOUT
-        self.my_log('[Actor %s] creating temporary queue' %(self.name,))
+        print('[Actor %s] creating temporary queue' %(self.name,))
         processed = Queue.Queue()
-        self.my_log('[Actor %s] Temporary queue created' %(self.name,))
+        print('[Actor %s] Temporary queue created' %(self.name,))
         start_time = current_time = time.time()
         msg = {}
-        self.my_log('[Actor %s] starting receive'%(self.name,))
+        print('[Actor %s] starting receive'%(self.name,))
         starting_size = self.inbox.qsize()
         checked_objects = 0
         while True:
@@ -206,22 +186,19 @@ class Actor(object):
                 break
             current_time = time.time()
             try:
-                self.my_log('[Actor %s] checking inbox with timeout:'
+                print('[Actor %s] checking inbox with timeout:'
                             '%s' %(self.name, inbox_polling))
                 msg = self.inbox.get(timeout=inbox_polling)
-                if msg == '_quit':
-                    self.my_log('[Actor %s] got __quit')
-                    # Special token to unlock actors.  Raise
-                    # 'StopIteration' to break loops where the receive
-                    # function is.
-                    raise StopIteration
                 checked_objects += 1
-                self.my_log('[Actor %s] got object: %s' %(self.name, msg))
-                self.my_log('[...     ] in receive: %s' %(patterns,))
+                print('[Actor %s] got object: %s' %(self.name, msg))
+                print('[...     ] in receive: %s' %(patterns,))
             except Queue.Empty:
-                self.my_log('[Actor %s] empty inbox' %(self.name,))
+                print('[Actor %s] empty inbox' %(self.name,))
                 continue
             try:
+                if msg.get('_internal'):
+                    # Special messages for internal operation
+                    self.process_internal(msg)
                 if msg['tag'] in patterns:
                     matched = msg['tag']
                     break
@@ -229,8 +206,8 @@ class Actor(object):
                     matched = '*'
                     break
             except (KeyError, TypeError):
-                logger.debug('Wrong message object: %s' %(msg,))
-                logger.debug('  discarding object...')
+                print('Wrong message object: %s' %(msg,))
+                print('  discarding object...')
                 continue
             # the object 'msg' was not matched, save it so we can
             # return it to the inbox
@@ -238,7 +215,7 @@ class Actor(object):
         # Return all unmatched objects to the inbox
         while not processed.empty():
             x = processed.get()
-            logger.debug('restoring object: %s' %(x,))
+            print('restoring object: %s' %(x,))
             # restore unprocessed object directly to the reader queue,
             # bypassing the fifo, to avoid overhead.  This is possible
             # because we have a reference to the read end of the
@@ -254,6 +231,17 @@ class Actor(object):
             f = action
         f(msg)
 
+    def process_internal(self, msg):
+        if msg['tag'] == '_quit':
+            print('[Actor %s] got __quit')
+            # Special token to unlock actors.  Raise
+            # 'StopIteration' to break loops where the receive
+            # function is.
+            raise StopIteration
+        if msg['tag'] == '_ping':
+            with ActorRef(msg['reply_to']) as sender:
+                sender._pong()
+            
     def act(self):
         """
         Subclasses must implement this method.
