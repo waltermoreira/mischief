@@ -80,7 +80,7 @@ class ActorRef(object):
         """
         ActorRef destroy itself if used as a context manager.
         """
-        pass
+        self.close()
         
     def __call__(self, *args, **kwargs):
         if self._tag is None:
@@ -105,6 +105,18 @@ class ActorRef(object):
              'sender': self.me()}
         """
         return self.name
+
+    def close(self):
+        """
+        Close just the reference
+        """
+        self.q.close()
+
+    def close_actor(self):
+        """
+        Remotely stop the actor with the internal message '_quit'
+        """
+        self._quit()
 
         
 class Actor(object):
@@ -216,6 +228,7 @@ class Actor(object):
         f(msg)
 
     def _quit(self, msg):
+        self.close()
         raise StopIteration
 
     def _pong(self, msg):
