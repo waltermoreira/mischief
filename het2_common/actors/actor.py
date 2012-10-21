@@ -137,9 +137,18 @@ class Actor(object):
         print('[Actor %s] creating my inbox' %(self.name,))
         self.inbox = Pipe(self.name, 'r')
 
-    def me(self):
-        return self.name
+    def __enter__(self):
+        """
+        Actor can be used as a context
+        """
+        return self
 
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Actor context closes it on exit
+        """
+        self.close()
+        
     def close(self):
         self.inbox.close()
     
