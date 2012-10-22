@@ -126,4 +126,19 @@ def test_many_msgs(t):
     assert res == [True]
     [x.close() for x in actors]
     y.close()
+
+def test_reply(p):
+    class a(Actor):
+        def act(self):
+            result = []
+            self.receive({
+                'answer': lambda msg: result.append(msg['answer'])})
+            return result[0]
+    x = a('a')
+    qt = ActorRef('p')
+    qt.send({'tag': 'reply',
+             'reply_to': 'a'})
+    assert x.act() == 5
+    x.close()
+    
     
