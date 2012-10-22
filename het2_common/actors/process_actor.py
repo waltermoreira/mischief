@@ -52,12 +52,6 @@ class ProcessActor(Actor):
     def process_act(self):
         raise NotImplementedError
         
-    def quit(self, msg):
-        """
-        Provide a way to break standard 'act' loop.
-        """
-        raise StopIteration
-
 class WaitActor(Actor):
     """
     Actor to wait for a message from the client's class saying that
@@ -68,7 +62,7 @@ class WaitActor(Actor):
         super(WaitActor, self).__init__()
         
     def act(self):
-        self.receive({'ok': lambda msg: None})
+        self.receive(ok=lambda msg: None)
      
 def start_actor(name, module):
     """
@@ -81,10 +75,9 @@ def start_actor(name, module):
     myself = os.path.abspath(__file__)
     if myself.endswith('.pyc'):
         myself = myself[:-1]
-    w = WaitActor()
-    p = subprocess.Popen(['python', myself, w.name, name, module])
-    w.act()
-    w.destroy_actor()
+    with WaitActor() as w:
+        p = subprocess.Popen(['python', myself, w.name, name, module])
+        w.act()
 
 if __name__ == '__main__':
     wait_ref = sys.argv[1]
@@ -92,6 +85,7 @@ if __name__ == '__main__':
 
     actor_class = sys.argv[2]
     actor_module = sys.argv[3]
+    print 'will import', actor_module
     mod = importlib.import_module(actor_module)
     cls = getattr(mod, actor_class)
     # Signal the base class ``ProcessActor`` to not start a new
@@ -100,14 +94,13 @@ if __name__ == '__main__':
     actor = cls()
     
     # Tell parent to keep going
-    wait.send({'tag': 'ok'})
-    wait.destroy_ref()
+    wait.ok()
+    wait.close()
 
     # The new process ends when the client's actor finishes its
     # ``act`` method.
+    print 'Process actor will act'
     actor.act()
-
-    actor_ref = ActorRef(actor.name)
-    actor_ref.destroy_actor()
+    print 'Process actor stopped acting, will quit!'
     
 
