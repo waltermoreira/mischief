@@ -1,5 +1,12 @@
 from het2_common.actors.actor import Actor, ActorRef, ThreadedActor
+from het2_common.globals import DEPLOY_PATH
 import py
+import os
+
+# Add path of tests to PYTHONPATH, since ProcessActor need to be in
+# the path
+os.environ['PYTHONPATH'] = ':'.join([os.environ['PYTHONPATH'],
+                                     os.path.join(DEPLOY_PATH, 'test')])
 
 def test_reply(t):
     class a(Actor):
@@ -141,4 +148,25 @@ def test_reply(p):
     assert x.act() == 5
     x.close()
     
-    
+
+def test_inbox(p):
+    class a(Actor):
+        def act(self):
+            result = []
+            self.receive({
+                'answer': lambda msg: result.append(msg['answer'])})
+            return result[0]
+    x = a('a')
+    qt = ActorRef('p')
+    qt.send({'tag': 'foo'})
+    qt.send({'tag': 'bar'})
+    qt.send({'tag': 'queue',
+            'reply_to': 'a'})
+    assert x.act() == 2
+    x.close()
+
+def test_non_existent_actor_ref():
+    x = ActorRef('foobar')
+    assert not x.is_alive()
+    assert not x.is_alive()
+    x.close()
