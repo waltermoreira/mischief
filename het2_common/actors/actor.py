@@ -133,8 +133,8 @@ class Actor(object):
     
     def __init__(self, name=None, prefix=''):
         self.name = name or '_'.join(filter(None, ['a', prefix, str(uuid.uuid1().hex)]))
-        print 'Creating actor with inbox', self.name
-        print('[Actor %s] creating my inbox' %(self.name,))
+        logger.debug('Creating actor with inbox %s' %self.name)
+        logger.debug('[Actor %s] creating my inbox' %(self.name,))
         self.inbox = Pipe(self.name, 'r')
 
     def __enter__(self):
@@ -180,12 +180,12 @@ class Actor(object):
         patterns['_quit'] = self._quit
         
         inbox_polling = timeout and self.INBOX_POLLING_TIMEOUT
-        print('[Actor %s] creating temporary queue' %(self.name,))
+        logger.debug('[Actor %s] creating temporary queue' %(self.name,))
         processed = Queue.Queue()
-        print('[Actor %s] Temporary queue created' %(self.name,))
+        logger.debug('[Actor %s] Temporary queue created' %(self.name,))
         start_time = current_time = time.time()
         msg = {}
-        print('[Actor %s] starting receive'%(self.name,))
+        logger.debug('[Actor %s] starting receive'%(self.name,))
         starting_size = self.inbox.qsize()
         checked_objects = 0
         while True:
@@ -198,14 +198,14 @@ class Actor(object):
                 break
             current_time = time.time()
             try:
-                print('[Actor %s] checking inbox with timeout:'
+                logger.debug('[Actor %s] checking inbox with timeout:'
                             '%s' %(self.name, inbox_polling))
                 msg = self.inbox.get(timeout=inbox_polling)
                 checked_objects += 1
-                print('[Actor %s] got object: %s' %(self.name, msg))
-                print('[...     ] in receive: %s' %(patterns,))
+                logger.debug('[Actor %s] got object: %s' %(self.name, msg))
+                logger.debug('[...     ] in receive: %s' %(patterns,))
             except Queue.Empty:
-                print('[Actor %s] empty inbox' %(self.name,))
+                logger.debug('[Actor %s] empty inbox' %(self.name,))
                 continue
             try:
                 if msg['tag'] in patterns:
@@ -215,8 +215,8 @@ class Actor(object):
                     matched = '_'
                     break
             except (KeyError, TypeError):
-                print('Wrong message object: %s' %(msg,))
-                print('  discarding object...')
+                logger.debug('Wrong message object: %s' %(msg,))
+                logger.debug('  discarding object...')
                 continue
             # the object 'msg' was not matched, save it so we can
             # return it to the inbox
@@ -224,7 +224,7 @@ class Actor(object):
         # Return all unmatched objects to the inbox
         while not processed.empty():
             x = processed.get()
-            print('restoring object: %s' %(x,))
+            logger.debug('restoring object: %s' %(x,))
             # restore unprocessed object directly to the reader queue,
             # bypassing the fifo, to avoid overhead.  This is possible
             # because we have a reference to the read end of the
@@ -253,12 +253,12 @@ class Actor(object):
         """
         Special method to respond to a ping
         """
-        print 'method pong', msg
+        logger.debug('method pong %s' %msg)
         with ActorRef(msg['reply_to']) as sender:
-            print 'will send pong to', sender
-            print ' with pipe', sender.q.name
+            logger.debug('will send pong to %s' %sender)
+            logger.debug(' with pipe %s' %sender.q.name)
             sender._pong()
-            print 'sent'
+            logger.debug('sent')
             
     def act(self):
         """
