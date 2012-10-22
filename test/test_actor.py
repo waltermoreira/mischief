@@ -1,5 +1,6 @@
 from het2_common.actors.actor import Actor, ActorRef, ThreadedActor
 from het2_common.globals import DEPLOY_PATH
+import time
 import py
 import os
 
@@ -170,3 +171,84 @@ def test_non_existent_actor_ref():
     assert not x.is_alive()
     assert not x.is_alive()
     x.close()
+
+def test_existent_actor_ref(t, p):
+    x = ActorRef('t')
+    assert x.is_alive()
+    y = ActorRef('p')
+    assert y.is_alive()
+    x.close()
+    y.close()
+
+def test_timeout_zero():
+    class a(Actor):
+        def act(self):
+            self.receive({
+                'foo': self.read_value('data'),
+                }, timeout=0)
+            return getattr(self, 'data', None)
+    x = a()
+    ActorRef(x.name).send({'tag': 'foo', 'data': 1})
+    while x.act() is None:
+        time.sleep(0.1)
+    y = x.act()
+    assert y == 1
+    x.close()
+
+def test_timeout_zero_2():
+    class a(Actor):
+        def act(self):
+            self.receive({
+                'foo': self.read_value('data'),
+                }, timeout=0)
+            return getattr(self, 'data', None)
+    x = a()
+    y = ActorRef(x.name)
+    y.send({'tag': 'bar'})
+    y.send({'tag': 'baz'})
+    y.send({'tag': 'foo', 'data': 1})
+    y.send({'tag': 'gii'})
+    while x.inbox.qsize() < 4:
+        time.sleep(0.1)
+    z = x.act()
+    assert z == 1
+    x.close()
+        
+def test_timeout_zero_no_match():
+    class a(Actor):
+        def act(self):
+            self.receive({
+                'foo': self.read_value('data')
+                }, timeout=0)
+            return getattr(self, 'data', None)
+    x = a()
+    ActorRef(x.name).send({'tag': 'bar', 'data': 2})
+    while x.inbox.qsize() != 1:
+        time.sleep(0.1)
+    y = x.act()
+    y = x.act()
+    y = x.act()
+    y = x.act()
+    assert y == None
+    x.close()
+
+def test_timeout_eating_msgs():
+    result = [True]
+    class a(Actor):
+        def act(self):
+            self.receive({}, timeout=0.1)
+        def act2(self):
+            self.receive(
+                bar = lambda msg: None,
+                timed_out = lambda msg: result.append(False),
+                timeout = 0.1)
+    x = a()
+    ActorRef(x.name).send({'tag': 'bar'})
+    while x.inbox.qsize() != 1:
+        time.sleep(0.1)
+    x.act()
+    x.act2()
+    assert result[-1]
+    x.close()
+
+    
