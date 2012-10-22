@@ -5,16 +5,16 @@ import time
 import os
 from proc_actor import process_actor
 
-def pytest_funcarg__qm(request):
-    return request.cached_setup(
-        setup=create_queue_manager,
-        teardown=lambda x: destroy(),
-        scope='session')
+# def pytest_funcarg__qm(request):
+#     return request.cached_setup(
+#         setup=create_queue_manager,
+#         teardown=lambda x: destroy(),
+#         scope='session')
 
-def destroy():
-    ActorRef('t').destroy_actor()
-    ActorRef('p').send({'tag': 'quit'})
-    ActorRef('p').destroy_actor()
+# def destroy():
+#     ActorRef('t').destroy_actor()
+#     ActorRef('p').send({'tag': 'quit'})
+#     ActorRef('p').destroy_actor()
 
 class _threaded_actor(ThreadedActor):
 
@@ -37,7 +37,16 @@ class _threaded_actor(ThreadedActor):
                 'stop': lambda msg: q.append(1)})
 
 
-def create_queue_manager():
-    t = _threaded_actor('t')
-    process_actor()
-    #p = _process_actor('p')
+# def create_queue_manager():
+#     t = _threaded_actor('t')
+#     process_actor()
+#     p = _process_actor('p')
+
+def pytest_funcarg__t(request):
+    return request.cached_setup(
+        setup=create_threaded_actor,
+        teardown=lambda x: x.close(),
+        scope='session')
+
+def create_threaded_actor():
+    return _threaded_actor('t')
