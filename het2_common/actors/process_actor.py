@@ -38,8 +38,8 @@ class ProcessActor(Actor):
     
     def __init__(self, *args, **kwargs):
         if self.launch:
-            self.name = start_actor(self.__class__.__name__,
-                                    self.__class__.__module__)
+            self.name, self.pid = start_actor(self.__class__.__name__,
+                                              self.__class__.__module__)
         else:
             super(ProcessActor, self).__init__(*args, **kwargs)
 
@@ -77,9 +77,13 @@ class WaitActor(Actor):
         super(WaitActor, self).__init__()
         
     def act(self):
-        self.receive(ok=self.read_value('name'))
-        return self.name
-     
+        self.receive(ok=self.read_reply)
+        return self.name, self.pid
+
+    def read_reply(self, msg):
+        self.name = msg['name']
+        self.pid = msg['pid']
+        
 def start_actor(name, module):
     """
     Start a new Python subprocess.
@@ -107,7 +111,7 @@ def spawn(actor, ref_name=None, **kwargs):
     a = actor()
     with ActorRef(a.name) as ref:
         ref.init(**kwargs)
-    return a.name
+    return a.name, a.pid
     
 if __name__ == '__main__':
     wait_ref = sys.argv[1]
@@ -123,7 +127,7 @@ if __name__ == '__main__':
     actor = cls()
     
     # Tell parent to keep going
-    wait.ok(name=actor.name)
+    wait.ok(name=actor.name, pid=os.getpid())
     wait.close()
 
     # The new process ends when the client's actor finishes its
