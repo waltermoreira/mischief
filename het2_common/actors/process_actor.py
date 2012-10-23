@@ -16,6 +16,11 @@ Use as::
 
         ...
 
+Launch actor with:
+
+    spawn(MyActor, foo=4)
+
+Keyword arguments are set in the actor in the new process.
 """
 
 from het2_common.actors.actor import Actor, ActorRef
@@ -90,6 +95,20 @@ def start_actor(name, module):
         p = subprocess.Popen(['python', myself, w.name, name, module])
         return w.act()
 
+def spawn(actor, ref_name=None, **kwargs):
+    """
+    Utility function to start a process actor and initialize it
+    """
+    if ref_name is not None:
+        with ActorRef(ref_name) as ref:
+            # Do not start if it's already alive
+            if ref.is_alive():
+                return
+    a = actor()
+    with ActorRef(a.name) as ref:
+        ref.init(**kwargs)
+    return a.name
+    
 if __name__ == '__main__':
     wait_ref = sys.argv[1]
     wait = ActorRef(wait_ref)
