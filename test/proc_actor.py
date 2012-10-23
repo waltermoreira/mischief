@@ -26,3 +26,12 @@ class _process_actor(ProcessActor):
             reply = self.reply,
             queue = self.queue,
             quit = self.quit)
+
+class _with_name(ProcessActor):
+
+    def __init__(self):
+        super(_with_name, self).__init__('foo')
+        
+    def process_act(self):
+        self.receive()
+        

@@ -251,4 +251,20 @@ def test_timeout_eating_msgs():
     assert result[-1]
     x.close()
 
+def test_process_actor_returns_name(q):
+    p = q()
+    assert p.name == 'foo'
+    ActorRef('foo').close_actor()
+    
+# def test_process_with_arg():
+#     class a(Actor):
+#         def act(self):
+#             self.receive(x = self.read_value('x'))
+#             return self.x
+#     x = a()
+#     p = _process_actor_with_arg(5)
+#     pr = ActorRef('p2')
+#     pr.get_x(reply_to=x.name)
+#     u = a.act()
+#     assert u == 5
     

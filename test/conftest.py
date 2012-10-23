@@ -3,7 +3,7 @@ import multiprocessing
 import signal
 import time
 import os
-from proc_actor import _process_actor
+from proc_actor import _process_actor, _with_name
 
 # def pytest_funcarg__qm(request):
 #     return request.cached_setup(
@@ -60,3 +60,6 @@ def pytest_funcarg__p(request):
 def create_process_actor():
     p = _process_actor()
     return ActorRef('p')
+
+def pytest_funcarg__q(request):
+    return _with_name
