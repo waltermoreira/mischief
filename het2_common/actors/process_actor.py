@@ -38,11 +38,21 @@ class ProcessActor(Actor):
         else:
             super(ProcessActor, self).__init__(*args, **kwargs)
 
+    def remote_init(self, msg):
+        """
+        Save addresses of other actors we want this process to
+        know
+        """
+        del msg['tag']
+        for name in msg:
+            setattr(self, name, msg[name])
+            
     def act(self):
         """
         If not overloaded, provide a basic act loop that can be
         customized through 'process_act'.
         """
+        self.receive(init=self.remote_init)
         try:
             while True:
                 self.process_act()

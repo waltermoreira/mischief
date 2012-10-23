@@ -253,18 +253,22 @@ def test_timeout_eating_msgs():
 
 def test_process_actor_returns_name(q):
     p = q()
+    ref = ActorRef('foo')
+    ref.init()
     assert p.name == 'foo'
     ActorRef('foo').close_actor()
     
-# def test_process_with_arg():
-#     class a(Actor):
-#         def act(self):
-#             self.receive(x = self.read_value('x'))
-#             return self.x
-#     x = a()
-#     p = _process_actor_with_arg(5)
-#     pr = ActorRef('p2')
-#     pr.get_x(reply_to=x.name)
-#     u = a.act()
-#     assert u == 5
-    
+def test_process_with_arg(q):
+    class a(Actor):
+        def act(self):
+            self.receive(reply = self.read_value('x'))
+            return self.x
+    x = a()
+    p = q()
+    ref = ActorRef('foo')
+    ref.init(x=5)
+    ref.get_x(reply_to=x.name)
+    u = x.act()
+    assert u == 5
+    ref.close_actor()
+    x.close()

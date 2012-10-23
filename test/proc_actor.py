@@ -31,7 +31,12 @@ class _with_name(ProcessActor):
 
     def __init__(self):
         super(_with_name, self).__init__('foo')
+        self.x = None
         
     def process_act(self):
-        self.receive()
-        
+        self.receive(get_x=self.get_x)
+
+    def get_x(self, msg):
+        with ActorRef(msg['reply_to']) as sender:
+            sender.reply(x=self.x)
+            
