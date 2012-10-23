@@ -115,7 +115,6 @@ if __name__ == '__main__':
 
     actor_class = sys.argv[2]
     actor_module = sys.argv[3]
-    print 'will import', actor_module
     mod = importlib.import_module(actor_module)
     cls = getattr(mod, actor_class)
     # Signal the base class ``ProcessActor`` to not start a new
@@ -129,8 +128,6 @@ if __name__ == '__main__':
 
     # The new process ends when the client's actor finishes its
     # ``act`` method.
-    print 'Process actor will act'
     actor.act()
-    print 'Process actor stopped acting, will quit!'
     
 
