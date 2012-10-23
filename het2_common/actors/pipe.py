@@ -16,6 +16,11 @@ logger = log.setup('pipe', 'to_file')
 
 Context = zmq.Context()
 
+# Set some time to wait for sockets to deliver messages
+# We don't want infinite time, since it may block when exiting
+# the application
+Context.linger = 5000 # ms
+
 class PipeReadTimeout(Exception):
     pass
 
