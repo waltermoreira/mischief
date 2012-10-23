@@ -59,7 +59,9 @@ def pytest_funcarg__p(request):
 
 def create_process_actor():
     p = _process_actor()
-    return ActorRef('p')
+    ref = ActorRef('p')
+    ref.init()
+    return ref
 
 def pytest_funcarg__q(request):
     return _with_name
