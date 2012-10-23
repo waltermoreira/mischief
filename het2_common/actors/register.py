@@ -16,8 +16,7 @@ class Register(ProcessActor):
         self.receive({'register': self.register,
                       'unregister': self.unregister,
                       'killall': self.killall,
-                      'list': self.list,
-                      'quit': self.quit})
+                      'list': self.list})
         
     def list(self, msg):
         for pid, name in self.processes.items():
