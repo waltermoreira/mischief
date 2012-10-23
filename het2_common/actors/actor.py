@@ -96,16 +96,6 @@ class ActorRef(object):
         """
         self.q.put(msg)
 
-    def me(self):
-        """
-        Name of the actor pointed by this reference. Use it for
-        sending self references in the messages::
-
-            {'tag': 'reply_me',
-             'sender': self.me()}
-        """
-        return self.name
-
     def close(self):
         """
         Close just the reference
