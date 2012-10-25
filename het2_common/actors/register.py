@@ -19,6 +19,7 @@ class Register(ProcessActor):
                       'list': self.list})
         
     def list(self, msg):
+        print 'List of processes registered:'
         for pid, name in self.processes.items():
             print '%5d: %s' %(pid, name)
             
