@@ -272,3 +272,17 @@ def test_process_with_arg(q):
     assert u == 5
     ref.close_actor()
     x.close()
+
+def test_close_with_confirmation(t):
+    class a(Actor):
+        def act(self):
+            self.receive(_ = self.read_value('tag'))
+            return self.tag
+    x = a()
+    with ActorRef('t') as tr:
+        assert tr.is_alive()
+        tr.close_actor(confirm_to=x.name)
+        u = x.act()
+        assert u == 'closed'
+        assert not tr.is_alive()
+    x.close()
