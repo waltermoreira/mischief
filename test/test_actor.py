@@ -296,7 +296,7 @@ def test_ping():
     assert xr.is_alive()
     time.sleep(0.5)
     assert xr.is_alive()
-    xr.close_actor()
+    x.close()
 
 def test_none_method():
     class a(Actor):
