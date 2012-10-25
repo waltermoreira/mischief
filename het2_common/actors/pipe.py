@@ -12,7 +12,7 @@ import zmq
 from het2_common import log
 from het2_common.globals import DEPLOY_PATH
 
-logger = log.setup('pipe', 'to_console')
+logger = log.setup('pipe', 'to_file')
 
 Context = zmq.Context()
 
@@ -50,26 +50,19 @@ class Pipe(object):
         the pipe Pipe(confirm_to).
         """
         if self.reader_thread:
-            print 'will send quit to thread'
             # force reader thread to finish
             self.push_socket = Context.socket(zmq.PUSH)
             self.push_socket.connect('ipc://%s' %self.path)
             # send non-json data
             self.push_socket.send('__quit')
             self.push_socket.close()
-            print 'sent, will join'
             self.reader_thread.join()
-            print 'joined'
-        print 'will close socket'
         self.socket.close()
-        print 'closed'
         if self.mode == 'r':
-            print 'will unlink'
             try:
                 os.unlink(self.path)
             except OSError:
                 pass
-            print 'unlinked'
         if confirm_to is not None:
             confirm_pipe = Pipe(confirm_to, 'w')
             confirm_pipe.put(confirm_msg)
