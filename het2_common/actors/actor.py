@@ -230,9 +230,15 @@ class Actor(object):
         except KeyError:
             return
         if isinstance(action, str):
+            # a string means a method of self (for those cases the
+            # method is added later)
             f = getattr(self, action)
         elif callable(action):
+            # a callable can be methods or functions
             f = action
+        elif action is None:
+            # None is a shortcut for an empty handler
+            f = lambda msg: None
         f(msg)
 
     def _quit(self, msg):

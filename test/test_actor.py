@@ -297,4 +297,15 @@ def test_ping():
     time.sleep(0.5)
     assert xr.is_alive()
     xr.close_actor()
-    
+
+def test_none_method():
+    class a(Actor):
+        def act(self):
+            self.receive(foo=None)
+            return True
+    x = a()
+    xr = ActorRef(x.name)
+    xr.foo()
+    y = x.act()
+    assert y
+    x.close()
