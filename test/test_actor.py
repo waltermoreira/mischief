@@ -286,3 +286,15 @@ def test_close_with_confirmation(t):
         assert u == 'closed'
         assert not tr.is_alive()
     x.close()
+
+def test_ping():
+    class a(ThreadedActor):
+        def act(self):
+            self.receive(foo=lambda msg: None)
+    x = a()
+    xr = ActorRef(x.name)
+    assert xr.is_alive()
+    time.sleep(0.5)
+    assert xr.is_alive()
+    xr.close_actor()
+    

@@ -167,7 +167,6 @@ class Actor(object):
         patterns.update(more_patterns)
         
         # Add internal message handlers
-        patterns['_ping'] = self._pong
         patterns['_quit'] = self._quit
         
         inbox_polling = timeout and self.INBOX_POLLING_TIMEOUT
@@ -199,6 +198,11 @@ class Actor(object):
                 logger.debug('[Actor %s] empty inbox' %(self.name,))
                 continue
             try:
+                if msg['tag'] == '_ping':
+                    # Special handler for _ping, since we don't want
+                    # to break the loop
+                    self._pong(msg)
+                    continue
                 if msg['tag'] in patterns:
                     matched = msg['tag']
                     break
