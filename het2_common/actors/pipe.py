@@ -12,7 +12,7 @@ import zmq
 from het2_common import log
 from het2_common.globals import DEPLOY_PATH
 
-logger = log.setup('pipe', 'to_file')
+logger = log.setup('pipe', 'to_console')
 
 Context = zmq.Context()
 
@@ -42,9 +42,12 @@ class Pipe(object):
     def qsize(self):
         return self.reader_queue.qsize()
         
-    def close(self):
+    def close(self, confirm_to=None, confirm_msg=None):
         """
         Close this end of the pipe.
+
+        If ``confirm_to`` is not None, then ``confirm_msg`` is sent to
+        the pipe Pipe(confirm_to).
         """
         if self.reader_thread:
             print 'will send quit to thread'
@@ -67,6 +70,10 @@ class Pipe(object):
             except OSError:
                 pass
             print 'unlinked'
+        if confirm_to is not None:
+            confirm_pipe = Pipe(confirm_to, 'w')
+            confirm_pipe.put(confirm_msg)
+            confirm_pipe.close()
 
     def write(self, data):
         self.socket.send_json(data)

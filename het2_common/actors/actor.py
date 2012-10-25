@@ -102,11 +102,11 @@ class ActorRef(object):
         """
         self.q.close()
 
-    def close_actor(self):
+    def close_actor(self, confirm_to=None):
         """
         Remotely stop the actor with the internal message '_quit'
         """
-        self._quit()
+        self._quit(confirm_to=confirm_to)
 
         
 class Actor(object):
@@ -139,8 +139,9 @@ class Actor(object):
         """
         self.close()
         
-    def close(self):
-        self.inbox.close()
+    def close(self, confirm_to=None):
+        confirm_msg = {'tag': 'closed'}
+        self.inbox.close(confirm_to, confirm_msg)
     
     def read_value(self, value_name):
         def _f(msg):
@@ -236,7 +237,8 @@ class Actor(object):
 
         Close it, and raise StopIteration to break external loops.
         """
-        self.close()
+        confirm_to = msg.get('confirm_to', None)
+        self.close(confirm_to=confirm_to)
         raise StopIteration
 
     def _pong(self, msg):
