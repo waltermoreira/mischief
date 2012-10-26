@@ -132,6 +132,9 @@ if __name__ == '__main__':
 
     # The new process ends when the client's actor finishes its
     # ``act`` method.
-    actor.act()
+    try:
+        actor.act()
+    except KeyboardInterrupt:
+        pass
     
 
