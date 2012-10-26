@@ -33,7 +33,7 @@ import uuid
 import socket
 import inspect
 import psutil
-from pipe import Pipe
+from pipe import Pipe, PipeException
 from het2_common import log
 
 logger = log.setup('actor', 'to_file')
@@ -55,10 +55,14 @@ class ActorRef(object):
         """
         Send a ping to the associated actor and wait for a pong
         """
-        with _ListenerActor() as listener:
-            self._ping(reply_to=listener.name)
-            listener.wait_pong(timeout=0.1)
-            return listener.pong
+        try:
+            with _ListenerActor() as listener:
+                self._ping(reply_to=listener.name)
+                listener.wait_pong(timeout=0.1)
+                return listener.pong
+        except PipeException:
+            # Pipe error means the reference is already closed
+            return False
         
     def __getattr__(self, attr):
         self._tag = attr

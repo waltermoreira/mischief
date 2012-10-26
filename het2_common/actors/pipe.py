@@ -21,7 +21,9 @@ Context = zmq.Context()
 # the application
 Context.linger = 5000 # ms
 
-class PipeReadTimeout(Exception):
+PipeException = zmq.ZMQError
+
+class PipeReadTimeout(PipeException):
     pass
 
 class Pipe(object):

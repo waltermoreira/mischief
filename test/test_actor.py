@@ -309,3 +309,21 @@ def test_none_method():
     y = x.act()
     assert y
     x.close()
+
+def test_close_actor_and_ref():
+    class Wait(Actor):
+        def act(self):
+            self.receive(_=None)
+    class a(ThreadedActor):
+        def act(self):
+            self.receive()
+    x = a()
+    wait = Wait()
+    xr = ActorRef(x.name)
+    assert xr.is_alive()
+    xr.close_actor(confirm_to=wait.name)
+    wait.act()
+    assert not xr.is_alive()
+    assert xr.q.socket.closed
+    x.close()
+    wait.close()
