@@ -127,11 +127,21 @@ class Actor(object):
     INBOX_POLLING_TIMEOUT = 0.01
     
     def __init__(self, name=None, prefix=''):
-        self.name = name or '_'.join(filter(None, ['a', prefix, str(uuid.uuid1().hex)]))
+        try:
+            self.name = name or '_'.join(filter(
+                None, ['a', prefix, str(uuid.uuid1().hex)[:8],
+                       self.my_id(inspect.stack()[2])]))
+        except Exception as exc:
+            self.name = '_'.join(filter(
+                None, ['a', prefix, str(uuid.uuid1().hex)]))
         logger.debug('Creating actor with inbox %s' %self.name)
         logger.debug('[Actor %s] creating my inbox' %(self.name,))
         self.inbox = Pipe(self.name, 'r')
 
+    def my_id(self, frame_record):
+        frame, f, lineno, fun = frame_record[0:4]
+        return '%s_%s_%s_%s' %(os.path.basename(f), lineno, fun, os.getpid())
+	         
     def __enter__(self):
         """
         Actor can be used as a context
