@@ -107,6 +107,7 @@ class ActorRef(object):
         Remotely stop the actor with the internal message '_quit'
         """
         self._quit(confirm_to=confirm_to)
+        self.close()
 
         
 class Actor(object):
