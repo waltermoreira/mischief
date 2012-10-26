@@ -110,13 +110,7 @@ def _reader(socket, queue, name):
     try:
         while True:
             data = socket.recv_json()
-
-            logger.debug('reading from pipe %s into python queue' %(name,))
-            logger.debug('  before inserting: size(queue) = %s' %(queue.qsize()))
-
             queue.put(data)
-
-            logger.debug('  after inserting: size(queue) = %s' %(queue.qsize()))
     except ValueError:
         # non-json data on the socket means we want to stop the
         # thread
