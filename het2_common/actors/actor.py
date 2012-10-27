@@ -33,12 +33,15 @@ import uuid
 import socket
 import inspect
 import psutil
-from pipe import Pipe, PipeException
+from pipe import Receiver, Sender
 from het2_common import log
 
 logger = log.setup('actor', 'to_file')
 
 class ActorException(Exception):
+    pass
+
+class ActorFinished(Exception):
     pass
     
 class ActorRef(object):
@@ -48,21 +51,17 @@ class ActorRef(object):
     
     def __init__(self, name):
         self.name = name
-        self.q = Pipe(name, 'w')
+        self.sender = Sender(name)
         self._tag = None
 
     def is_alive(self):
         """
         Send a ping to the associated actor and wait for a pong
         """
-        try:
-            with _ListenerActor() as listener:
-                self._ping(reply_to=listener.name)
-                listener.wait_pong(timeout=0.1)
-                return listener.pong
-        except PipeException:
-            # Pipe error means the reference is already closed
-            return False
+        with _ListenerActor() as listener:
+            self._ping(reply_to=listener.name)
+            listener.wait_pong(timeout=0.5)
+            return listener.pong
         
     def __getattr__(self, attr):
         self._tag = attr
@@ -98,20 +97,20 @@ class ActorRef(object):
         """
         Send a message to the actor represented by this reference.
         """
-        self.q.put(msg)
+        self.sender.put(msg)
 
     def close(self):
         """
         Close just the reference
         """
-        self.q.close()
+        self.sender.close()
 
     def close_actor(self, confirm_to=None):
         """
         Remotely stop the actor with the internal message '_quit'
         """
-        self._quit(confirm_to=confirm_to)
-        self.close()
+        confirm_msg = {'tag': 'closed'}
+        self.sender.close_receiver(confirm_to=confirm_to, confirm_msg=confirm_msg)
 
         
 class Actor(object):
@@ -134,9 +133,7 @@ class Actor(object):
         except Exception as exc:
             self.name = '_'.join(filter(
                 None, ['a', prefix, str(uuid.uuid1().hex)]))
-        logger.debug('Creating actor with inbox %s' %self.name)
-        logger.debug('[Actor %s] creating my inbox' %(self.name,))
-        self.inbox = Pipe(self.name, 'r')
+        self.inbox = Receiver(self.name)
 
     def my_id(self, frame_record):
         frame, f, lineno, fun = frame_record[0:4]
@@ -153,7 +150,7 @@ class Actor(object):
         Actor context closes it on exit
         """
         self.close()
-        
+    
     def close(self, confirm_to=None):
         confirm_msg = {'tag': 'closed'}
         self.inbox.close(confirm_to, confirm_msg)
@@ -181,16 +178,10 @@ class Actor(object):
             patterns = {}
         patterns.update(more_patterns)
         
-        # Add internal message handlers
-        patterns['_quit'] = self._quit
-        
         inbox_polling = timeout and self.INBOX_POLLING_TIMEOUT
-        logger.debug('[Actor %s] creating temporary queue' %(self.name,))
         processed = Queue.Queue()
-        logger.debug('[Actor %s] Temporary queue created' %(self.name,))
         start_time = current_time = time.time()
         msg = {}
-        logger.debug('[Actor %s] starting receive'%(self.name,))
         starting_size = self.inbox.qsize()
         checked_objects = 0
         while True:
@@ -203,14 +194,11 @@ class Actor(object):
                 break
             current_time = time.time()
             try:
-                logger.debug('[Actor %s] checking inbox with timeout:'
-                            '%s' %(self.name, inbox_polling))
                 msg = self.inbox.get(timeout=inbox_polling)
+                if msg is None:
+                    raise ActorFinished()
                 checked_objects += 1
-                logger.debug('[Actor %s] got object: %s' %(self.name, msg))
-                logger.debug('[...     ] in receive: %s' %(patterns,))
             except Queue.Empty:
-                logger.debug('[Actor %s] empty inbox' %(self.name,))
                 continue
             try:
                 if msg['tag'] == '_ping':
@@ -225,8 +213,6 @@ class Actor(object):
                     matched = '_'
                     break
             except (KeyError, TypeError):
-                logger.debug('Wrong message object: %s' %(msg,))
-                logger.debug('  discarding object...')
                 continue
             # the object 'msg' was not matched, save it so we can
             # return it to the inbox
@@ -234,7 +220,6 @@ class Actor(object):
         # Return all unmatched objects to the inbox
         while not processed.empty():
             x = processed.get()
-            logger.debug('restoring object: %s' %(x,))
             # restore unprocessed object directly to the reader queue,
             # bypassing the fifo, to avoid overhead.  This is possible
             # because we have a reference to the read end of the
@@ -256,26 +241,12 @@ class Actor(object):
             f = lambda msg: None
         f(msg)
 
-    def _quit(self, msg):
-        """
-        Special method to stop the actor
-
-        Close it, and raise StopIteration to break external loops.
-        """
-        confirm_to = msg.get('confirm_to', None)
-        self.close(confirm_to=confirm_to)
-        raise StopIteration
-
     def _pong(self, msg):
         """
         Special method to respond to a ping
         """
-        logger.debug('method pong %s' %msg)
         with ActorRef(msg['reply_to']) as sender:
-            logger.debug('will send pong to %s' %sender)
-            logger.debug(' with pipe %s' %sender.q.name)
             sender._pong()
-            logger.debug('sent')
             
     def act(self):
         """
@@ -283,6 +254,12 @@ class Actor(object):
         """
         raise NotImplementedError
 
+    # def __del__(self):
+    #     try:
+    #         self.close()
+    #     except Exception:
+    #         pass
+        
 class ThreadedActor(Actor):
     """
     A threaded version of an actor.  It runs as a daemon thread.

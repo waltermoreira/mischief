@@ -1,9 +1,10 @@
-from het2_common.actors.actor import ThreadedActor, ActorRef
+from het2_common.actors.actor import ThreadedActor, ActorRef, Actor
+from het2_common.actors.process_actor import spawn
 import multiprocessing
 import signal
 import time
 import os
-from proc_actor import _process_actor, _with_name
+from proc_actor import _process_actor, _with_name, _with_name_2
 
 # def pytest_funcarg__qm(request):
 #     return request.cached_setup(
@@ -58,10 +59,14 @@ def pytest_funcarg__p(request):
         scope='session')
 
 def create_process_actor():
-    p = _process_actor()
+    spawn(_process_actor, 'p')
     ref = ActorRef('p')
-    ref.init()
+    while not ref.is_alive():
+        time.sleep(0.1)
     return ref
 
 def pytest_funcarg__q(request):
     return _with_name
+
+def pytest_funcarg__q2(request):
+    return _with_name_2

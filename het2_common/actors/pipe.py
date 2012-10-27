@@ -21,127 +21,107 @@ Context = zmq.Context()
 # the application
 Context.linger = 5000 # ms
 
-PipeException = zmq.ZMQError
+def path_to(name):
+    """
+    Path for unix socket with name ``name``.
+    """
+    return os.path.join(DEPLOY_PATH, 'lib/run/actor_pipes', name)
 
-class PipeReadTimeout(PipeException):
-    pass
+class Receiver(object):
 
-class Pipe(object):
-
-    def __init__(self, name, mode='r'):
+    def __init__(self, name):
         self.name = name
-        self.reader_queue = None
-        self.reader_thread = None
-        self.path = self._path_to(name)
-        self.mode = mode
-        if mode == 'r':
-            self._open_read_pipe()
-        elif mode == 'w':
-            self._open_write_pipe()
-        else:
-            raise Exception("unknown mode. Should be 'r' or 'w'")
+        self.path = path_to(name)
+
+        self.reader_queue = Queue()
+        self.reader_thread = threading.Thread(target=_reader,
+                                              args=(self.path, self.reader_queue, logger))
+        self.reader_thread.name = 'reader-%s'%(self.name,)
+        self.reader_thread.daemon = True
+        self.reader_thread.start()
 
     def qsize(self):
         return self.reader_queue.qsize()
         
-    def close(self, confirm_to=None, confirm_msg=None):
-        """
-        Close this end of the pipe.
-
-        If ``confirm_to`` is not None, then ``confirm_msg`` is sent to
-        the pipe Pipe(confirm_to).
-        """
-        if self.reader_thread:
-            # force reader thread to finish
-            self.push_socket = Context.socket(zmq.PUSH)
-            self.push_socket.connect('ipc://%s' %self.path)
-            # send non-json data
-            self.push_socket.send('__quit')
-            self.push_socket.close()
-            self.reader_thread.join()
-        self.socket.close()
-        if self.mode == 'r':
-            try:
-                os.unlink(self.path)
-            except OSError:
-                pass
-        if confirm_to is not None:
-            confirm_pipe = Pipe(confirm_to, 'w')
-            confirm_pipe.put(confirm_msg)
-            confirm_pipe.close()
-
-    def write(self, data):
-        self.socket.send_json(data)
-
-    # synonym
-    put = write
-    
     def read(self, block=True, timeout=None):
         x = self.reader_queue.get(block, timeout)
-        logger.debug('reader queue for %s got %s' %(self.name, x))
+        logger.debug('Receive at %s' %(self.name,))
+        logger.debug('  message: %s' %(x,))
         return x
-            
+
+    def close(self, confirm_to=None, confirm_msg=None):
+        with Sender(self.name) as sender:
+            sender.close_receiver(confirm_to, confirm_msg)
+        
     # synonym
     get = read
+
+    def __del__(self):
+        self.close()
     
-    def _open_write_pipe(self):
+class Sender(object):
+
+    def __init__(self, name):
+        self.name = name
+        self.path = path_to(self.name)
         self.socket = Context.socket(zmq.PUSH)
         self.socket.connect('ipc://%s' %self.path)
 
-    def _open_read_pipe(self):
-        self.socket = Context.socket(zmq.PULL)
-        self.socket.bind('ipc://%s' %self.path)
-        
-        self.reader_queue = Queue()
-        self.reader_thread = threading.Thread(target=_reader,
-                                              args=(self.socket, self.reader_queue, self.name))
-        self.reader_thread.name = 'reader-%s'%(self.name,)
-        self.reader_thread.daemon = True
-        self.reader_thread.start()
-        
-    def _path_to(self, name):
-        return os.path.join(DEPLOY_PATH, 'lib/run/actor_pipes', name)
+    def __enter__(self):
+        return self
 
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
         
-def _reader(socket, queue, name):
+    def write(self, data):
+        logger.debug('Send to %s' %self.name)
+        logger.debug('  message: %s' %(data,))
+        self.socket.send_json(data)
+
+    def close(self):
+        self.socket.close()
+
+    def close_receiver(self, confirm_to=None, confirm_msg=None):
+        self.put({'tag': '__quit__',
+                  'confirm_to': confirm_to,
+                  'confirm_msg': confirm_msg})
+        
+    # synonym
+    put = write
+
+    def __del__(self):
+        self.close()
+    
+def _reader(socket_name, queue, logger):
     """
     Thread function that reads the zmq socket and puts the data
     into the queue
     """
+    import collections
+    
+    socket = Context.socket(zmq.PULL)
+    socket.bind('ipc://%s' %socket_name)
 
     try:
         while True:
             data = socket.recv_json()
+            if data['tag'] == '__quit__':
+                # means to shutdown the thread
+                socket.close()
+                # Put None in the queue to signal clients that are
+                # waiting for data
+                queue.put(None)
+                confirm_to = data.get('confirm_to', None)
+                if confirm_to is not None:
+                    # Confirm that the socket was closed
+                    with Sender(confirm_to) as sender:
+                        confirm_msg = data.get('confirm_msg', None)
+                        sender.put(confirm_msg)
+                return
             queue.put(data)
-    except ValueError:
-        # non-json data on the socket means we want to stop the
-        # thread
-        return
+    except Exception:
+        import traceback
+        logger.debug('Reader thread for %s got an exception:' %(socket_name,))
+        logger.debug(traceback.format_exc())
             
         
-def grouper(n, iterable):
-    """
-    grouper(3, 'ABCDEFG') --> ABC DEF Gxx
-    """
-    args = [iter(iterable)] * n
-    return imap(lambda x: ''.join(x),
-                izip_longest(fillvalue=' ', *args))
-
-def write(p, c):
-    p.write(c*100000)
-    print 'ended writing', c
-    
-def test():
-    p1 = Pipe('foo', 'r')
-
-    symbols = ['X', '_', 'R', '$']
-    threads = []
-    pipes = []
-    for c in symbols:
-        p = Pipe('foo', 'w')
-        pipes.append(p)
-        threads.append(threading.Thread(target=write, args=(p, c)))
-    for t in threads:
-        t.start()
-    return p1
-

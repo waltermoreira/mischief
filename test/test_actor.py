@@ -1,4 +1,5 @@
-from het2_common.actors.actor import Actor, ActorRef, ThreadedActor
+from het2_common.actors.actor import Actor, ActorRef, ThreadedActor, ActorFinished
+from het2_common.actors.process_actor import spawn
 from het2_common.globals import DEPLOY_PATH
 import time
 import py
@@ -110,8 +111,11 @@ def test_many_msgs(t):
             super(a, self).__init__()
             self.results = {}
         def act(self):
-            while True:
-                self.receive(add=self.add)
+            try:
+                while True:
+                    self.receive(add=self.add)
+            except ActorFinished:
+                pass
         def add(self, msg):
             self.results[msg['i']] = 1
             if sorted(self.results.keys()) == range(100):
@@ -168,15 +172,19 @@ def test_inbox(p):
 
 def test_non_existent_actor_ref():
     x = ActorRef('foobar')
-    assert not x.is_alive()
-    assert not x.is_alive()
+    not_alive = not x.is_alive()
+    assert not_alive
+    not_alive = not x.is_alive()
+    assert not_alive
     x.close()
 
 def test_existent_actor_ref(t, p):
     x = ActorRef('t')
-    assert x.is_alive()
+    alive = x.is_alive()
+    assert alive
     y = ActorRef('p')
-    assert y.is_alive()
+    alive = y.is_alive()
+    assert alive
     x.close()
     y.close()
 
@@ -252,21 +260,19 @@ def test_timeout_eating_msgs():
     x.close()
 
 def test_process_actor_returns_name(q):
-    p = q()
+    p, _ = spawn(q, 'foo')
     ref = ActorRef('foo')
-    ref.init()
-    assert p.name == 'foo'
+    assert p == 'foo'
     ActorRef('foo').close_actor()
     
-def test_process_with_arg(q):
+def test_process_with_arg(q2):
     class a(Actor):
         def act(self):
             self.receive(reply = self.read_value('x'))
             return self.x
     x = a()
-    p = q()
-    ref = ActorRef('foo')
-    ref.init(x=5)
+    spawn(q2, 'foo2', x=5)
+    ref = ActorRef('foo2')
     ref.get_x(reply_to=x.name)
     u = x.act()
     assert u == 5
@@ -280,11 +286,11 @@ def test_close_with_confirmation(t):
             return self.tag
     x = a()
     with ActorRef('t') as tr:
-        assert tr.is_alive()
+        alive = tr.is_alive()
+        assert alive
         tr.close_actor(confirm_to=x.name)
         u = x.act()
         assert u == 'closed'
-        assert not tr.is_alive()
     x.close()
 
 def test_ping():
@@ -293,9 +299,11 @@ def test_ping():
             self.receive(foo=lambda msg: None)
     x = a()
     xr = ActorRef(x.name)
-    assert xr.is_alive()
+    alive = xr.is_alive()
+    assert alive
     time.sleep(0.5)
-    assert xr.is_alive()
+    alive = xr.is_alive()
+    assert alive
     x.close()
 
 def test_none_method():
@@ -320,10 +328,11 @@ def test_close_actor_and_ref():
     x = a()
     wait = Wait()
     xr = ActorRef(x.name)
-    assert xr.is_alive()
+    alive = xr.is_alive()
+    assert alive
     xr.close_actor(confirm_to=wait.name)
     wait.act()
-    assert not xr.is_alive()
-    assert xr.q.socket.closed
+    not_alive = not xr.is_alive()
+    assert not_alive
     x.close()
     wait.close()

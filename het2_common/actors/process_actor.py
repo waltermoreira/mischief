@@ -51,6 +51,8 @@ class ProcessActor(Actor):
         del msg['tag']
         for name in msg:
             setattr(self, name, msg[name])
+        with ActorRef(msg['reply_to']) as sender:
+            sender.finished_init()
             
     def act(self):
         """
@@ -109,8 +111,12 @@ def spawn(actor, ref_name=None, **kwargs):
             if ref.is_alive():
                 return
     a = actor()
-    with ActorRef(a.name) as ref:
-        ref.init(**kwargs)
+    class Wait(Actor):
+        def act(self):
+            self.receive(finished_init=None)
+    with ActorRef(a.name) as ref, Wait() as wait:
+        ref.init(reply_to=wait.name, **kwargs)
+        wait.act()
     return a.name, a.pid
     
 if __name__ == '__main__':
