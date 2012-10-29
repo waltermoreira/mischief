@@ -125,8 +125,12 @@ def _reader(socket_name, queue, logger):
                         sender.put(confirm_msg)
                 return
             if data['tag'] == '__ping__':
+                # answer special message without going to the receive,
+                # since the actor may be doing something long lasting
+                # and not reading the queue
                 with Sender(data['reply_to']) as sender:
                     sender.put({'tag': '__pong__'})
+                # avoid inserting this message in the queue
                 continue
             queue.put(data)
     except Exception:
