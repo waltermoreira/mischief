@@ -296,7 +296,10 @@ def test_close_with_confirmation(t):
 def test_ping():
     class a(ThreadedActor):
         def act(self):
-            self.receive(foo=lambda msg: None)
+            try:
+                self.receive(foo=lambda msg: None)
+            except ActorFinished:
+                pass
     x = a()
     xr = ActorRef(x.name)
     alive = xr.is_alive()
