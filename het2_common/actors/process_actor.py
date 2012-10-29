@@ -80,10 +80,10 @@ class WaitActor(Actor):
         
     def act(self):
         self.receive(ok=self.read_reply)
-        return self.name, self.pid
+        return self.spawn_name, self.pid
 
     def read_reply(self, msg):
-        self.name = msg['name']
+        self.spawn_name = msg['spawn_name']
         self.pid = msg['pid']
         
 def start_actor(name, module):
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     actor = cls()
     
     # Tell parent to keep going
-    wait.ok(name=actor.name, pid=os.getpid())
+    wait.ok(spawn_name=actor.name, pid=os.getpid())
     wait.close()
 
     # The new process ends when the client's actor finishes its
