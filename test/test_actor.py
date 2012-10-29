@@ -336,3 +336,18 @@ def test_close_actor_and_ref():
     assert not_alive
     x.close()
     wait.close()
+
+def test_sync_call(t):
+    class a(ThreadedActor):
+        def act(self):
+            self.receive(sync_test=self.sync_test)
+        def sync_test(self, msg):
+            with ActorRef(msg['reply_to']) as sender:
+                sender.reply(got=msg)
+    x = a()
+    with ActorRef(x.name) as tr:
+        assert tr.is_alive()
+        answer = tr.sync('sync_test', x=5)
+        assert answer['got']['tag'] == 'sync_test'
+        assert answer['got']['x'] == 5
+    x.close()

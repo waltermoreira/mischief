@@ -51,6 +51,13 @@ class ActorRef(object):
         self.sender = Sender(name)
         self._tag = None
 
+    def sync(self, tag, **kwargs):
+        with _ReplyWaiter() as waiter:
+            kwargs['tag'] = tag
+            kwargs['reply_to'] = waiter.name
+            self.send(kwargs)
+            return waiter.act()
+            
     def is_alive(self):
         """
         Send a ping to the associated actor and wait for a pong
@@ -306,3 +313,12 @@ class _ListenerActor(Actor):
 
     def timed_out(self, msg):
         self.pong = False
+
+class _ReplyWaiter(Actor):
+
+    def act(self):
+        self.receive(reply=self.read_reply)
+        return self.reply
+
+    def read_reply(self, msg):
+        self.reply = msg
