@@ -66,7 +66,7 @@ class ActorRef(object):
         Send a ping to the associated actor and wait for a pong
         """
         with _ListenerActor() as listener:
-            self._ping(reply_to=listener.name)
+            self.__ping__(reply_to=listener.name)
             listener.wait_pong(timeout=0.5)
             return listener.pong
         
@@ -301,7 +301,7 @@ class _ListenerActor(Actor):
     
     def wait_pong(self, timeout=0):
         self.receive(
-            _pong = self.got_pong,
+            __pong__ = self.got_pong,
             timed_out = self.timed_out,
             timeout = timeout)
 

@@ -354,3 +354,16 @@ def test_sync_call(t):
         assert answer['got']['tag'] == 'sync_test'
         assert answer['got']['x'] == 5
     x.close()
+
+def test_alive_not_acting():
+    class a(Actor):
+        def act(self):
+            self.receive(_=self.read_value('tag'))
+            return self.tag
+    x = a()
+    xr = ActorRef(x.name)
+    alive = xr.is_alive()
+    assert alive
+    xr.foo()
+    u = x.act()
+    assert u == 'foo'

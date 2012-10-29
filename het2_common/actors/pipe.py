@@ -124,6 +124,10 @@ def _reader(socket_name, queue, logger):
                         confirm_msg = data.get('confirm_msg', None)
                         sender.put(confirm_msg)
                 return
+            if data['tag'] == '__ping__':
+                with Sender(data['reply_to']) as sender:
+                    sender.put({'tag': '__pong__'})
+                continue
             queue.put(data)
     except Exception:
         import traceback
