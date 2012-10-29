@@ -52,6 +52,9 @@ class ActorRef(object):
         self._tag = None
 
     def sync(self, tag, **kwargs):
+        """
+        Utility to send a message synchronously
+        """
         with _ReplyWaiter() as waiter:
             kwargs['tag'] = tag
             kwargs['reply_to'] = waiter.name
