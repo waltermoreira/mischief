@@ -134,7 +134,9 @@ def setup(mod_name, to_where='to_everywhere'):
                     'to_console': 'console',
                     'to_logger': 'logger',
                     'to_everywhere': 'full'}
-    return logging.getLogger(mod_name+'.'+destinations[to_where])
+    logger = logging.getLogger(mod_name+'.'+destinations[to_where])
+    logger.debug('--------------------')
+    return logger
     
 def test(s):
     setup_log('gui', '/home/moreira/deploy')
