@@ -149,7 +149,8 @@ class Actor(object):
         """
         Actor context closes it on exit
         """
-        self.close()
+        with ActorRef(self.name) as myself:
+            myself.close_actor()
     
     def close(self, confirm_to=None):
         confirm_msg = {'tag': 'closed'}
