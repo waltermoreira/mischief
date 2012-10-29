@@ -38,9 +38,6 @@ from het2_common import log
 
 logger = log.setup('actor', 'to_file')
 
-class ActorException(Exception):
-    pass
-
 class ActorFinished(Exception):
     pass
     
