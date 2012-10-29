@@ -258,12 +258,6 @@ class Actor(object):
         Subclasses must implement this method.
         """
         raise NotImplementedError
-
-    # def __del__(self):
-    #     try:
-    #         self.close()
-    #     except Exception:
-    #         pass
         
 class ThreadedActor(Actor):
     """
