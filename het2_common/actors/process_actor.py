@@ -23,7 +23,7 @@ Launch actor with:
 Keyword arguments are set in the actor in the new process.
 """
 
-from het2_common.actors.actor import Actor, ActorRef
+from het2_common.actors.actor import Actor, ActorRef, ActorFinished
 import importlib
 import os
 import sys
@@ -63,7 +63,7 @@ class ProcessActor(Actor):
         try:
             while True:
                 self.process_act()
-        except StopIteration:
+        except (StopIteration, ActorFinished):
             return
 
     def process_act(self):
