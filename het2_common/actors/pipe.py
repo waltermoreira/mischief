@@ -11,6 +11,7 @@ import traceback
 import zmq
 from het2_common import log
 from het2_common.globals import DEPLOY_PATH
+import inspect
 
 logger = log.setup('pipe', 'to_file')
 
@@ -62,6 +63,11 @@ class Receiver(object):
 class Sender(object):
 
     def __init__(self, name):
+        try:
+            self.my_actor = inspect.stack()[2][0].f_locals['self'].__class__
+        except:
+            self.my_actor = '%s-%s-%s' %tuple(inspect.stack()[2][1:4])
+        
         self.name = name
         self.path = path_to(self.name)
         self.socket = Context.socket(zmq.PUSH)
@@ -74,7 +80,7 @@ class Sender(object):
         self.close()
         
     def write(self, data):
-        logger.debug('Send to %s' %self.name)
+        logger.debug('Send from %s to %s' %(self.my_actor, self.name))
         logger.debug('  message: %s' %(data,))
         self.socket.send_json(data)
 
