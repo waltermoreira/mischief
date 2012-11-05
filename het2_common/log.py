@@ -135,7 +135,6 @@ def setup(mod_name, to_where='to_everywhere'):
                     'to_logger': 'logger',
                     'to_everywhere': 'full'}
     logger = logging.getLogger(mod_name+'.'+destinations[to_where])
-    logger.debug('--------------------')
     return logger
     
 def test(s):
