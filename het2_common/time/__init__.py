@@ -87,6 +87,9 @@ def sexagesimal_to_rad(string):
     s.slaDafin(string, start, result, stat)
     return (stat.value(), result.value(), start.value()-1)
 
+def hms_to_rad(string):
+    return sexagesimal_to_rad(string)*15
+    
 def rad_to_degminsec(rad):
     sign = s.charp()
     idmsf = s.ivec(4)
