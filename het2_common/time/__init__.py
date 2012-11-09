@@ -88,7 +88,8 @@ def sexagesimal_to_rad(string):
     return (stat.value(), result.value(), start.value()-1)
 
 def hms_to_rad(string):
-    return sexagesimal_to_rad(string)*15
+    stat, value, end = sexagesimal_to_rad(string)
+    return (stat, value*15, end)
     
 def rad_to_degminsec(rad):
     sign = s.charp()
