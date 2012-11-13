@@ -14,5 +14,7 @@ ARCSECONDS = math.pi/(180.0*60*60)
 
 # seconds to mjd
 SECONDS = 1.0/(24*60*60)
+# mjd to seconds
+MJD = 1/SECONDS
 
 DEPLOY_PATH = os.environ['HET2_DEPLOY']
