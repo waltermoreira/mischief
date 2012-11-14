@@ -16,6 +16,13 @@ import inspect
 logger = log.setup('pipe', 'to_file')
 
 Context = zmq.Context()
+try:
+    # create directory to put the named pipes
+    os.makedirs('/tmp/actor_pipes')
+except OSError as exc:
+    # ignore error if directory already exists
+    if exc.errno != errno.EEXIST:
+        raise
 
 # Set some time to wait for sockets to deliver messages
 # We don't want infinite time, since it may block when exiting
@@ -26,7 +33,7 @@ def path_to(name):
     """
     Path for unix socket with name ``name``.
     """
-    return os.path.join(DEPLOY_PATH, 'lib/run/actor_pipes', name)
+    return os.path.join('/tmp/actor_pipes', name)
 
 class Receiver(object):
 
