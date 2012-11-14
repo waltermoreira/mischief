@@ -16,9 +16,10 @@ import inspect
 logger = log.setup('pipe', 'to_file')
 
 Context = zmq.Context()
+ACTORS_DIRECTORY = '/tmp/actors_%s' %os.environ.get('USER', 'NO_USER')
 try:
     # create directory to put the named pipes
-    os.makedirs('/tmp/actor_pipes')
+    os.makedirs(ACTORS_DIRECTORY)
 except OSError as exc:
     # ignore error if directory already exists
     if exc.errno != errno.EEXIST:
@@ -33,7 +34,7 @@ def path_to(name):
     """
     Path for unix socket with name ``name``.
     """
-    return os.path.join('/tmp/actor_pipes', name)
+    return os.path.join(ACTORS_DIRECTORY, name)
 
 class Receiver(object):
 
