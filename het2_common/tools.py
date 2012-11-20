@@ -1,4 +1,7 @@
 import itertools
+import sys
+import os
+from contextlib import contextmanager
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
@@ -14,3 +17,31 @@ def scanl(f, iterable):
     for x in iterable:
         prev = f(prev, x) if prev is not None else x
         yield prev
+
+@contextmanager
+def no_stdout():
+    """
+    Context manager to temporarily disable stdout
+    """
+    old_stdout = sys.stdout
+    try:
+        old_stdout.flush()
+        sys.stdout = open(os.devnull, 'w')
+        yield
+    finally:
+        sys.stdout = old_stdout
+
+@contextmanager
+def no_stderr():
+    """
+    Context manager to temporarily disable stdout
+    """
+    old_stderr = sys.stderr
+    try:
+        old_stderr.flush()
+        sys.stderr = open(os.devnull, 'w')
+        yield
+    finally:
+        sys.stderr = old_stderr
+
+        
