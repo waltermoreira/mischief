@@ -1,29 +1,39 @@
-all:
+ifndef HET2_AUXIL
+	$(error HET2_AUXIL must point to the auxil directory)
+endif
+
+SWIG=$(HET2_AUXIL)/swig/bin/swig
+PYTHON=$(HET2_AUXIL)/Python/bin/python
+COMMON_DIR=$(HET2_WKSP)/common
+CJSON_DIR=$(HET2_AUXIL)/cJSON
+
+all: het2_common/time/het2_time.py het2_common/time/het2_time_wrap.cxx het2_common/cjson/het2_cjson.py het2_common/cjson/het2_cjson_wrap.cxx
 	mkdir -p $(HET2_DEPLOY)/lib/run/actor_pipes
-	python setup.py install --prefix=$(HET2_DEPLOY)
-	$(MAKE) html --directory=doc
+	$(PYTHON) setup.py build
 
-clean:
-	python setup.py clean
+het2_common/time/het2_time.py het2_common/time/het2_time_wrap.cxx: het2_common/time/het2_time.i
+	(cd het2_common/time; $(SWIG) -python -c++ -I$(COMMON_DIR)/include het2_time.i)
 
-.PHONY: test
-test:
-	mkdir -p $(HET2_DEPLOY)/test/pycommon_tests
-	cp -a test $(HET2_DEPLOY)/test/pycommon_tests
-	py.test $(HET2_DEPLOY)/test/pycommon_tests
+het2_common/cjson/het2_cjson.py het2_common/cjson/het2_cjson_wrap.cxx: het2_common/cjson/het2_cjson.i
+	(cd het2_common/cjson; $(SWIG) -python -c++ -I$(CJSON_DIR) het2_cjson.i)
 
-install:
+install: all
+	$(PYTHON) setup.py install --prefix=$(HET2_DEPLOY)
+	mkdir -p $(HET2_DEPLOY)/test/trajectory_tests
+	cp het2_common/trajectories/tolerances.json.example $(HET2_DEPLOY)/test/trajectory_tests/
 	mkdir -p $(HET2_DEPLOY)/lib/run/actor_pipes
-	python setup.py install --prefix=$(HET2_DEPLOY)
 	cp py_logging.conf.example $(HET2_DEPLOY)/etc
 
-uninstall:
-	rm -rf $(HET2_DEPLOY)/lib/python$(PYTHON_VERSION)/site-packages/pycommon
-	rm -rf $(HET2_DEPLOY)/lib/python$(PYTHON_VERSION)/site-packages/PyCommon*
 
-.PHONY: debug
 debug: all
 
-install_docs:
-	mkdir -p $(HET2_DOCS)/pycommon
-	cp -r doc/_build/html/* $(HET2_DOCS)/pycommon
+clean:
+	$(PYTHON) setup.py clean
+	rm -rf build
+	rm -rf het2_common/time/het2_time_wrap.*
+	rm -rf *.pyc
+	rm -rf het2_common/time/.so
+	rm -rf het2_common/time/het2_time.py
+
+doc:
+	$(MAKE) html --directory=doc
