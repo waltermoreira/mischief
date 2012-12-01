@@ -9,9 +9,8 @@ import os
 import threading
 import traceback
 import zmq
-from het2_common import log
-from het2_common.globals import DEPLOY_PATH
 import inspect
+from .. import log
 
 logger = log.setup('pipe', 'to_file')
 
