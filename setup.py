@@ -13,6 +13,6 @@ setup(name='mischief',
       license='LICENSE.txt',
       long_description=open('README.txt').read(),
       install_requires=[
-          "pyzmq >= 2.1",
+          "pyzmq >= 2.1.12",
       ],
       )
