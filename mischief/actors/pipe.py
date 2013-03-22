@@ -12,7 +12,7 @@ import zmq
 import inspect
 from .. import log
 
-logger = log.setup('pipe', 'to_file')
+logger = log.setup(to='file')
 
 Context = zmq.Context()
 ACTORS_DIRECTORY = '/tmp/actors_%s' %os.environ.get('USER', 'NO_USER')
