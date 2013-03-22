@@ -27,12 +27,13 @@ def setup(**args):
         filename = args.get('filename', '{}.log'.format(mod_name))
         directory = args.get('directory', '/tmp')
         logger = logging.getLogger(mod_name)
+        handlers = {
+            'file': logging.handlers.RotatingFileHandler(
+                os.path.join(directory, filename)),
+            'console': logging.StreamHandler()
+        }
         for dest in destinations:
-            if dest == 'file':
-                handler = logging.handlers.RotatingFileHandler(
-                    os.path.join(directory, filename))
-            if dest == 'console':
-                handler = logging.StreamHandler()
+            handler = handlers[dest]
             handler.setFormatter(formatter)
             logger.addHandler(handler)
         return logger
