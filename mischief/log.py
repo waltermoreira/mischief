@@ -27,6 +27,7 @@ def setup(**args):
         filename = args.get('filename', '{}.log'.format(mod_name))
         directory = args.get('directory', '/tmp')
         logger = logging.getLogger(mod_name)
+        logger.setLevel(logging.DEBUG)
         handlers = {
             'file': logging.handlers.RotatingFileHandler(
                 os.path.join(directory, filename)),
