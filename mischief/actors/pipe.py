@@ -159,7 +159,26 @@ def _reader(socket_name, queue, logger):
         import traceback
         logger.debug('Reader thread for %s got an exception:' %(socket_name,))
         logger.debug(traceback.format_exc())
-            
+
+class ExternalListener(object):
+
+    def __init__(self, ip, port):
+        self.ip = ip
+        self.port = port
+
+    def start(self):
+        self.thread = threading.Thread(target=_external_listener,
+                                       args=(self.ip, self.port, logger))
+        self.thread.name = 'ExternalListener-{}:{}'.format(self.ip, self.port)
+        self.thread.daemon = True
+        self.thread.start()
+
+    def stop(self):
+        socket = Context.socket(zmq.PUSH)
+        socket.connect('tcp://{}:{}'.format(self.ip, self.port))
+        socket.send_json({'__quit__': True})
+        self.thread.join()
+        
 def _external_listener(ip, port, logger):
     socket = Context.socket(zmq.PULL)
     socket.bind('tcp://{}:{}'.format(ip, port))
@@ -167,6 +186,9 @@ def _external_listener(ip, port, logger):
     try:
         while True:
             data = socket.recv_json()
+            if data.get('__quit__'):
+                logger.debug('External listener asked to shutdown')
+                return
             name = data['_to']
             logger.debug('Got data in external directed to {}'.format(name))
             s = Sender(name)
@@ -175,11 +197,4 @@ def _external_listener(ip, port, logger):
         import traceback
         logger.debug('External listener got an exception:')
         logger.debug(traceback.format_exc())
-
-def create_external_listener(ip, port):
-    thread = threading.Thread(target=_external_listener,
-                              args=(ip, port, logger))
-    thread.name = 'ExternalListener-{}:{}'.format(ip, port)
-    thread.daemon = True
-    thread.start()
     
