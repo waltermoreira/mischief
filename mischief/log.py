@@ -36,6 +36,7 @@ def setup(**args):
         for dest in destinations:
             handler = handlers[dest]
             handler.setFormatter(formatter)
+            logger.removeHandler(handler)
             logger.addHandler(handler)
         return logger
     finally:
