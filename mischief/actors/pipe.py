@@ -68,17 +68,30 @@ class Receiver(object):
         self.close()
     
 class Sender(object):
+    """
+    A sender pipe.
 
+    ``name`` can be
+
+    - ``identifier``: a local pipe
+    - ``ip:identifier``: a remote pipe
+    """
+
+    DEFAULT_EXTERNAL_PORT = 5555
+    
     def __init__(self, name):
         try:
             self.my_actor = inspect.stack()[2][0].f_locals['self'].__class__
         except:
             self.my_actor = '%s-%s-%s' %tuple(inspect.stack()[2][1:4])
-        
-        self.name = name
+
+        self.ip, self.name = name.split(':') if ':' in name else (None, name)
         self.path = path_to(self.name)
         self.socket = Context.socket(zmq.PUSH)
-        self.socket.connect('ipc://%s' %self.path)
+        if self.ip is not None:
+            self.socket.connect('tcp://{}:{}'.format(self.ip, self.DEFAULT_EXTERNAL_PORT))
+        else:
+            self.socket.connect('ipc://%s' %self.path)
 
     def __enter__(self):
         return self
@@ -89,6 +102,8 @@ class Sender(object):
     def write(self, data):
         logger.debug('Send from %s to %s' %(self.my_actor, self.name))
         logger.debug('  message: %s' %(data,))
+        if self.ip is not None:
+            data['_to'] = self.name
         self.socket.send_json(data)
 
     def close(self):
@@ -145,4 +160,26 @@ def _reader(socket_name, queue, logger):
         logger.debug('Reader thread for %s got an exception:' %(socket_name,))
         logger.debug(traceback.format_exc())
             
-        
+def _external_listener(ip, port, logger):
+    socket = Context.socket(zmq.PULL)
+    socket.bind('tcp://{}:{}'.format(ip, port))
+
+    try:
+        while True:
+            data = socket.recv_json()
+            name = data['_to']
+            logger.debug('Got data in external directed to {}'.format(name))
+            s = Sender(name)
+            s.put(data)
+    except Exception:
+        import traceback
+        logger.debug('External listener got an exception:')
+        logger.debug(traceback.format_exc())
+
+def create_external_listener(ip, port):
+    thread = threading.Thread(target=_external_listener,
+                              args=(ip, port, logger))
+    thread.name = 'ExternalListener-{}:{}'.format(ip, port)
+    thread.daemon = True
+    thread.start()
+    
