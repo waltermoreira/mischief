@@ -48,6 +48,47 @@ class Receiver(object):
         self.reader_thread.daemon = True
         self.reader_thread.start()
 
+    @staticmethod
+    def _reader(socket_name, queue, logger):
+        """
+        Thread function that reads the zmq socket and puts the data
+        into the queue
+        """
+        import collections
+
+        socket = Context.socket(zmq.PULL)
+        socket.bind('ipc://%s' %socket_name)
+
+        try:
+            while True:
+                data = socket.recv_json()
+                if data['tag'] == '__quit__':
+                    # means to shutdown the thread
+                    socket.close()
+                    # Put None in the queue to signal clients that are
+                    # waiting for data
+                    queue.put(None)
+                    confirm_to = data.get('confirm_to', None)
+                    if confirm_to is not None:
+                        # Confirm that the socket was closed
+                        with Sender(confirm_to) as sender:
+                            confirm_msg = data.get('confirm_msg', None)
+                            sender.put(confirm_msg)
+                    return
+                if data['tag'] == '__ping__':
+                    # answer special message without going to the receive,
+                    # since the actor may be doing something long lasting
+                    # and not reading the queue
+                    with Sender(data['reply_to']) as sender:
+                        sender.put({'tag': '__pong__'})
+                    # avoid inserting this message in the queue
+                    continue
+                queue.put(data)
+        except Exception:
+            import traceback
+            logger.debug('Reader thread for %s got an exception:' %(socket_name,))
+            logger.debug(traceback.format_exc())
+        
     def qsize(self):
         return self.reader_queue.qsize()
         
@@ -120,45 +161,6 @@ class Sender(object):
     def __del__(self):
         self.close()
     
-def _reader(socket_name, queue, logger):
-    """
-    Thread function that reads the zmq socket and puts the data
-    into the queue
-    """
-    import collections
-    
-    socket = Context.socket(zmq.PULL)
-    socket.bind('ipc://%s' %socket_name)
-
-    try:
-        while True:
-            data = socket.recv_json()
-            if data['tag'] == '__quit__':
-                # means to shutdown the thread
-                socket.close()
-                # Put None in the queue to signal clients that are
-                # waiting for data
-                queue.put(None)
-                confirm_to = data.get('confirm_to', None)
-                if confirm_to is not None:
-                    # Confirm that the socket was closed
-                    with Sender(confirm_to) as sender:
-                        confirm_msg = data.get('confirm_msg', None)
-                        sender.put(confirm_msg)
-                return
-            if data['tag'] == '__ping__':
-                # answer special message without going to the receive,
-                # since the actor may be doing something long lasting
-                # and not reading the queue
-                with Sender(data['reply_to']) as sender:
-                    sender.put({'tag': '__pong__'})
-                # avoid inserting this message in the queue
-                continue
-            queue.put(data)
-    except Exception:
-        import traceback
-        logger.debug('Reader thread for %s got an exception:' %(socket_name,))
-        logger.debug(traceback.format_exc())
 
 class ExternalListener(object):
 
@@ -167,7 +169,7 @@ class ExternalListener(object):
         self.port = port
 
     def start(self):
-        self.thread = threading.Thread(target=_external_listener,
+        self.thread = threading.Thread(target=self._external_listener,
                                        args=(self.ip, self.port, logger))
         self.thread.name = 'ExternalListener-{}:{}'.format(self.ip, self.port)
         self.thread.daemon = True
@@ -179,22 +181,23 @@ class ExternalListener(object):
         socket.send_json({'__quit__': True})
         self.thread.join()
         
-def _external_listener(ip, port, logger):
-    socket = Context.socket(zmq.PULL)
-    socket.bind('tcp://{}:{}'.format(ip, port))
+    @staticmethod
+    def _external_listener(ip, port, logger):
+        socket = Context.socket(zmq.PULL)
+        socket.bind('tcp://{}:{}'.format(ip, port))
 
-    try:
-        while True:
-            data = socket.recv_json()
-            if data.get('__quit__'):
-                logger.debug('External listener asked to shutdown')
-                return
-            name = data['_to']
-            logger.debug('Got data in external directed to {}'.format(name))
-            s = Sender(name)
-            s.put(data)
-    except Exception:
-        import traceback
-        logger.debug('External listener got an exception:')
-        logger.debug(traceback.format_exc())
+        try:
+            while True:
+                data = socket.recv_json()
+                if data.get('__quit__'):
+                    logger.debug('External listener asked to shutdown')
+                    return
+                name = data['_to']
+                logger.debug('Got data in external directed to {}'.format(name))
+                with Sender(name) as s:
+                    s.put(data)
+        except Exception:
+            import traceback
+            logger.debug('External listener got an exception:')
+            logger.debug(traceback.format_exc())
     
