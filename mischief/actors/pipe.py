@@ -42,7 +42,7 @@ class Receiver(object):
         self.path = path_to(name)
 
         self.reader_queue = Queue()
-        self.reader_thread = threading.Thread(target=_reader,
+        self.reader_thread = threading.Thread(target=self._reader,
                                               args=(self.path, self.reader_queue, logger))
         self.reader_thread.name = 'reader-%s'%(self.name,)
         self.reader_thread.daemon = True
