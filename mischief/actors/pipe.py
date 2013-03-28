@@ -10,6 +10,7 @@ import threading
 import traceback
 import zmq
 import inspect
+from collections import defaultdict
 from .. import log
 
 logger = log.setup(to=['file', 'console'])
@@ -43,21 +44,33 @@ class Receiver(object):
 
         self.reader_queue = Queue()
         self.reader_thread = threading.Thread(target=self._reader,
-                                              args=(self.path, self.reader_queue, logger))
+                                              args=(logger,))
         self.reader_thread.name = 'reader-%s'%(self.name,)
         self.reader_thread.daemon = True
         self.reader_thread.start()
 
-    @staticmethod
-    def _reader(socket_name, queue, logger):
+    def send_to_local_namebroker(self, msg):
+        socket = Context.socket(zmq.PUSH)
+        socket.connect('tcp://127.0.0.1:9999')
+        socket.send_json(msg)
+
+    def _reader(self, logger):
         """
         Thread function that reads the zmq socket and puts the data
         into the queue
         """
         import collections
 
+        socket_name = self.path
+        queue = self.reader_queue
+        
         socket = Context.socket(zmq.PULL)
         socket.bind('ipc://%s' %socket_name)
+        port = socket.bind_to_random_port('tcp://*')
+        self.send_to_local_namebroker({
+            '__register__': True,
+            '__name__': self.name,
+            '__port__': port})
 
         try:
             while True:
@@ -83,10 +96,21 @@ class Receiver(object):
                         sender.put({'tag': '__pong__'})
                     # avoid inserting this message in the queue
                     continue
+                if data['tag'] == '__tcp_ping__':
+                    # respond to a particular port
+                    reply_to_port = data['reply_to_port']
+                    reply_to_ip = data['reply_to_ip']
+                    reply_socket = Context.socket(zmq.PUSH)
+                    reply_socket.connect('tcp://{}:{}'.format(reply_to_ip,
+                                                              reply_to_port))
+                    reply_socket.send_json({'tag': '__pong__'})
+                    reply_socket.close()
+                    continue
                 queue.put(data)
         except Exception:
             import traceback
-            logger.debug('Reader thread for %s got an exception:' %(socket_name,))
+            logger.debug('Reader thread for {} got an exception:'
+                         .format(socket_name))
             logger.debug(traceback.format_exc())
         
     def qsize(self):
@@ -130,7 +154,8 @@ class Sender(object):
         self.path = path_to(self.name)
         self.socket = Context.socket(zmq.PUSH)
         if self.ip is not None:
-            self.socket.connect('tcp://{}:{}'.format(self.ip, self.DEFAULT_EXTERNAL_PORT))
+            self.socket.connect(
+                'tcp://{}:{}'.format(self.ip, self.DEFAULT_EXTERNAL_PORT))
         else:
             self.socket.connect('ipc://%s' %self.path)
 
@@ -144,7 +169,7 @@ class Sender(object):
         logger.debug('Send from %s to %s' %(self.my_actor, self.name))
         logger.debug('  message: %s' %(data,))
         if self.ip is not None:
-            data['_to'] = self.name
+            data['__to__'] = self.name
         self.socket.send_json(data)
 
     def close(self):
@@ -160,18 +185,28 @@ class Sender(object):
 
     def __del__(self):
         self.close()
+
+        
+class Server(object):
     
-
-class ExternalListener(object):
-
     def __init__(self, ip, port):
         self.ip = ip
         self.port = port
+        self.setup()
 
+    def setup(self):
+        pass
+        
+    @property
+    def name(self):
+        return '{}-{}:{}'.format(type(self).__name__,
+                                 self.ip,
+                                 self.port)
+        
     def start(self):
-        self.thread = threading.Thread(target=self._external_listener,
-                                       args=(self.ip, self.port, logger))
-        self.thread.name = 'ExternalListener-{}:{}'.format(self.ip, self.port)
+        self.thread = threading.Thread(target=self._server,
+                                       args=(logger,))
+        self.thread.name = self.name
         self.thread.daemon = True
         self.thread.start()
 
@@ -180,24 +215,92 @@ class ExternalListener(object):
         socket.connect('tcp://{}:{}'.format(self.ip, self.port))
         socket.send_json({'__quit__': True})
         self.thread.join()
-        
-    @staticmethod
-    def _external_listener(ip, port, logger):
+
+    def _server(self, logger):
         socket = Context.socket(zmq.PULL)
-        socket.bind('tcp://{}:{}'.format(ip, port))
+        socket.bind('tcp://{}:{}'.format(self.ip, self.port))
 
         try:
             while True:
                 data = socket.recv_json()
                 if data.get('__quit__'):
-                    logger.debug('External listener asked to shutdown')
+                    logger.debug('asked to shutdown')
                     return
-                name = data['_to']
-                logger.debug('Got data in external directed to {}'.format(name))
-                with Sender(name) as s:
-                    s.put(data)
+                self.handle(data)
         except Exception:
             import traceback
-            logger.debug('External listener got an exception:')
+            logger.debug('got an exception:')
             logger.debug(traceback.format_exc())
-    
+        
+
+class ExternalListener(Server):
+
+    def handle(self, data):
+        name = data['__to__']
+        logger.debug('Got data in external directed to {}'.format(name))
+        with Sender(name) as s:
+            s.put(data)
+
+            
+class NameBroker(Server):
+
+    def setup(self):
+        self.names = {}
+        self.temp = defaultdict(lambda: Queue())
+
+    def handle(self, data):
+        logger.debug('Handling {}'.format(data))
+        if data.get('__register__'):
+            self.register(data)
+        elif data.get('__list__'):
+            try:
+                col = max(map(len, self.names))
+            except ValueError:
+                logger.debug('No registered names')
+                return
+            for name in self.names:
+                logger.debug('{{:>{}}}: {{}}'
+                             .format(col)
+                             .format(name, self.names[name]))
+        else:
+            name = data['__to__']
+            port = self.port_for(name)
+            if port is None:
+                self.send_to_port(port, data)
+            else:
+                self.temp[name].put(data)
+
+    def register(self, data):
+        name = data['__name__']
+        port = data['__port__']
+        self.names[name] = port
+        q = self.temp[name]
+        while not q.empty():
+            self.send_to_port(port, q.get())
+
+    def port_for(self, name):
+        try:
+            port = self.names[name]
+            self.ping(port)
+            return port
+        except (KeyError, IOError):
+            return None
+
+    def send_to_port(self, port, data):
+        pass
+
+    def ping(self, port):
+        recv_socket = Context.socket(zmq.PULL)
+        recv_port = recv_socket.bind_to_random_port('tcp://*')
+        socket = Context.socket(zmq.PUSH)
+        socket.connect('tcp://127.0.0.1:{}'.format(port))
+        socket.send_json({
+            'tag': '__tcp_ping__',
+            'reply_to_port': recv_port,
+            'reply_to_ip': '127.0.0.1'})
+        recv_socket.set(zmq.RCVTIMEO, 1000)
+        try:
+            recv_socket.recv_json()
+            return True
+        except zmq.ZMQError:
+            return False
