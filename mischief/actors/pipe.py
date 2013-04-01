@@ -265,9 +265,13 @@ class NameBroker(Server):
         else:
             name = data['__to__']
             port = self.port_for(name)
-            if port is None:
+            if port is not None:
                 self.send_to_port(port, data)
             else:
+                try:
+                    del self.names[name]
+                except KeyError:
+                    pass
                 self.temp[name].put(data)
 
     def register(self, data):
@@ -276,14 +280,18 @@ class NameBroker(Server):
         self.names[name] = port
         q = self.temp[name]
         while not q.empty():
-            self.send_to_port(port, q.get())
+            try:
+                x = q.get()
+                self.send_to_port(port, x)
+            except zmq.ZMQError:
+                q.put(x)
 
     def port_for(self, name):
         try:
             port = self.names[name]
             self.ping(port)
             return port
-        except (KeyError, IOError):
+        except (KeyError, zmq.ZMQError):
             return None
 
     def send_to_port(self, port, data):
@@ -293,14 +301,15 @@ class NameBroker(Server):
         recv_socket = Context.socket(zmq.PULL)
         recv_port = recv_socket.bind_to_random_port('tcp://*')
         socket = Context.socket(zmq.PUSH)
-        socket.connect('tcp://127.0.0.1:{}'.format(port))
-        socket.send_json({
-            'tag': '__tcp_ping__',
-            'reply_to_port': recv_port,
-            'reply_to_ip': '127.0.0.1'})
-        recv_socket.set(zmq.RCVTIMEO, 1000)
         try:
+            socket.connect('tcp://127.0.0.1:{}'.format(port))
+            socket.send_json({
+                'tag': '__tcp_ping__',
+                'reply_to_port': recv_port,
+                'reply_to_ip': '127.0.0.1'})
+            recv_socket.set(zmq.RCVTIMEO, 1000)
             recv_socket.recv_json()
             return True
-        except zmq.ZMQError:
-            return False
+        finally:
+            recv_socket.close()
+            socket.close()
