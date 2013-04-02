@@ -246,70 +246,34 @@ class NameBroker(Server):
 
     def setup(self):
         self.names = {}
-        self.temp = defaultdict(lambda: Queue())
 
     def handle(self, data):
-        logger.debug('Handling {}'.format(data))
-        if data.get('__register__'):
-            self.register(data)
-        elif data.get('__list__'):
-            try:
-                col = max(map(len, self.names))
-            except ValueError:
-                logger.debug('No registered names')
-                return
-            for name in self.names:
-                logger.debug('{{:>{}}}: {{}}'
-                             .format(col)
-                             .format(name, self.names[name]))
-        else:
-            name = data['__to__']
-            port = self.port_for(name)
-            if port is not None:
-                self.send_to_port(port, data)
-            else:
-                try:
-                    del self.names[name]
-                except KeyError:
-                    pass
-                self.temp[name].put(data)
+        logger.debug('handling', data)
+        cmd = data['__tag__']
+        try:
+            getattr(self, cmd)(data)
+        except AttributeError:
+            pass
 
     def register(self, data):
         name = data['__name__']
         port = data['__port__']
         self.names[name] = port
-        q = self.temp[name]
-        while not q.empty():
-            try:
-                x = q.get()
-                self.send_to_port(port, x)
-            except zmq.ZMQError:
-                q.put(x)
 
-    def port_for(self, name):
+    def unregister(self, data):
+        name = data['__name__']
         try:
-            port = self.names[name]
-            self.ping(port)
-            return port
-        except (KeyError, zmq.ZMQError):
-            return None
+            del self.names[name]
+        except KeyError:
+            pass
 
-    def send_to_port(self, port, data):
-        pass
-
-    def ping(self, port):
-        recv_socket = Context.socket(zmq.PULL)
-        recv_port = recv_socket.bind_to_random_port('tcp://*')
-        socket = Context.socket(zmq.PUSH)
+    def list(self, data):
         try:
-            socket.connect('tcp://127.0.0.1:{}'.format(port))
-            socket.send_json({
-                'tag': '__tcp_ping__',
-                'reply_to_port': recv_port,
-                'reply_to_ip': '127.0.0.1'})
-            recv_socket.set(zmq.RCVTIMEO, 1000)
-            recv_socket.recv_json()
-            return True
-        finally:
-            recv_socket.close()
-            socket.close()
+            col = max(map(len, self.names))
+        except ValueError:
+            logger.debug('No registered names')
+            return
+        for name in self.names:
+            logger.debug('{{:>{}}}: {{}}'
+                         .format(col)
+                         .format(name, self.names[name]))
