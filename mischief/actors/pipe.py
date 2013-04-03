@@ -143,7 +143,29 @@ class Receiver(object):
 
     def __del__(self):
         self.close()
-    
+
+def get_port_for(name, at):
+    my_ip = get_local_ip(at)
+    reply_socket = Context.socket(zmq.PULL)
+    my_port = reply_socket.bind_to_random_port('tcp://*')
+
+    socket = Context.socket(zmq.PUSH)
+    socket.connect('tcp://{}:{}'.format(at, NameBroker.PORT))
+    socket.send_json(
+        {'__tag__': 'get',
+         '__name__': name,
+         '__reply_to__': 'tcp://{}:{}'.format(my_ip, my_port)})
+    socket.close()
+
+    reply_socket.set(zmq.RCVTIMEO, 1000)
+    try:
+        resp = reply_socket.recv_json()
+        return resp['__port__']
+    finally:
+        reply_socket.close()
+
+
+        
 class Sender(object):
     """
     A sender pipe.
