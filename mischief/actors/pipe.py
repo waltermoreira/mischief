@@ -176,8 +176,6 @@ class Sender(object):
     - ``ip:identifier``: a remote pipe
     """
 
-    DEFAULT_EXTERNAL_PORT = 5555
-    
     def __init__(self, name):
         try:
             self.my_actor = inspect.stack()[2][0].f_locals['self'].__class__
