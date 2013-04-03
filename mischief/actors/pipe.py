@@ -292,6 +292,18 @@ class NameBroker(Server):
         except AttributeError:
             pass
 
+    def get(self, data):
+        name = data['__name__']
+        reply_to = data['__reply_to__']
+        port = self.names.get(name, None)
+        try:
+            reply_socket = Context.socket(zmq.PUSH)
+            reply_socket.connect(reply_to)
+            reply_socket.send_json({'__port__': port})
+        finally:
+            reply_socket.close()
+        
+        
     def register(self, data):
         name = data['__name__']
         port = data['__port__']
