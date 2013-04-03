@@ -63,7 +63,7 @@ class Receiver(object):
 
     def send_to_local_namebroker(self, msg):
         socket = Context.socket(zmq.PUSH)
-        socket.connect('tcp://127.0.0.1:9999')
+        socket.connect('tcp://localhost:{}'.format(NameBroker.PORT))
         socket.send_json(msg)
 
     def _reader(self, logger):
@@ -80,7 +80,7 @@ class Receiver(object):
         socket.bind('ipc://%s' %socket_name)
         port = socket.bind_to_random_port('tcp://*')
         self.send_to_local_namebroker({
-            '__register__': True,
+            '__tag__': 'register',
             '__name__': self.name,
             '__port__': port})
 
