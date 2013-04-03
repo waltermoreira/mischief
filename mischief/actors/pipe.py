@@ -9,6 +9,7 @@ import os
 import threading
 import traceback
 import zmq
+import socket
 import inspect
 from collections import defaultdict
 from .. import log
@@ -35,6 +36,17 @@ def path_to(name):
     Path for unix socket with name ``name``.
     """
     return os.path.join(ACTORS_DIRECTORY, name)
+
+def get_local_ip(target):
+    ipaddr = ''
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect((target, 8000))
+        ipaddr = s.getsockname()[0]
+    finally:
+        s.close()
+    return ipaddr 
+    
 
 class Receiver(object):
 
