@@ -183,11 +183,13 @@ class Sender(object):
             self.my_actor = '%s-%s-%s' %tuple(inspect.stack()[2][1:4])
 
         self.ip, self.name = name.split(':') if ':' in name else (None, name)
+        if os.name != 'posix' and self.ip is None:
+            self.ip = 'localhost'
         self.path = path_to(self.name)
         self.socket = Context.socket(zmq.PUSH)
         if self.ip is not None:
-            self.socket.connect(
-                'tcp://{}:{}'.format(self.ip, self.DEFAULT_EXTERNAL_PORT))
+            port = get_port_for(self.name, at=self.ip)
+            self.socket.connect('tcp://{}:{}'.format(self.ip, port))
         else:
             self.socket.connect('ipc://%s' %self.path)
 
