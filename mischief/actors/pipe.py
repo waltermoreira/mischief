@@ -224,7 +224,8 @@ class Server(object):
 
     def stop(self):
         socket = Context.socket(zmq.PUSH)
-        socket.connect('tcp://{}:{}'.format(self.ip, self.port))
+        ip = self.ip if self.ip != '*' else 'localhost'
+        socket.connect('tcp://{}:{}'.format(ip, self.port))
         socket.send_json({'__quit__': True})
         self.thread.join()
 
