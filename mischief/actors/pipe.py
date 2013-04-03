@@ -256,11 +256,15 @@ class ExternalListener(Server):
             
 class NameBroker(Server):
 
+    PORT = 5555
+
+    def __init__(self):
+        super(NameBroker, self).__init__('*', self.PORT)
+        
     def setup(self):
         self.names = {}
 
     def handle(self, data):
-        logger.debug('handling', data)
         cmd = data['__tag__']
         try:
             getattr(self, cmd)(data)
