@@ -77,7 +77,8 @@ class Receiver(object):
         queue = self.reader_queue
         
         socket = Context.socket(zmq.PULL)
-        socket.bind('ipc://%s' %socket_name)
+        if os.name == 'posix':
+            socket.bind('ipc://%s' %socket_name)
         port = socket.bind_to_random_port('tcp://*')
         self.send_to_local_namebroker({
             '__tag__': 'register',
