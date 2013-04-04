@@ -12,6 +12,7 @@ import zmq
 import socket
 import inspect
 from collections import defaultdict
+from contextlib import contextmanager
 from .. import log
 
 logger = log.setup(to=['file', 'console'])
@@ -46,8 +47,13 @@ def get_local_ip(target):
     finally:
         s.close()
     return ipaddr 
-    
 
+@contextmanager
+def socket(zmq_type):
+    s = Context.socket(zmq_type)
+    yield s
+    s.close()
+    
 class Receiver(object):
 
     def __init__(self, name):
