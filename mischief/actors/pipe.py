@@ -76,70 +76,53 @@ class Receiver(object):
         self.reader_thread.daemon = True
         self.reader_thread.start()
 
-    def send_to_local_namebroker(self, msg):
-        socket = Context.socket(zmq.PUSH)
-        socket.connect('tcp://localhost:{}'.format(NameBroker.PORT))
-        socket.send_json(msg)
-
+    def _reader_loop(self, socket):
+        queue = self.reader_queue
+        while True:
+            data = socket.recv_json()
+            if data['tag'] == '__quit__':
+                # means to shutdown the thread
+                socket.close()
+                # Put None in the queue to signal clients that are
+                # waiting for data
+                queue.put(None)
+                confirm_to = data.get('confirm_to', None)
+                if confirm_to is not None:
+                    # Confirm that the socket was closed
+                    with Sender(confirm_to) as sender:
+                        confirm_msg = data.get('confirm_msg', None)
+                        sender.put(confirm_msg)
+                return
+            if data['tag'] == '__ping__':
+                # answer special message without going to the receive,
+                # since the actor may be doing something long lasting
+                # and not reading the queue
+                with Sender(data['reply_to']) as sender:
+                    sender.put({'tag': '__pong__'})
+                # avoid inserting this message in the queue
+                continue
+            queue.put(data)
+        
     def _reader(self, logger):
         """
         Thread function that reads the zmq socket and puts the data
         into the queue
         """
-        import collections
-
-        socket_name = self.path
-        queue = self.reader_queue
-        
-        socket = Context.socket(zmq.PULL)
-        if os.name == 'posix':
-            socket.bind('ipc://%s' %socket_name)
-        port = socket.bind_to_random_port('tcp://*')
-        self.send_to_local_namebroker({
-            '__tag__': 'register',
-            '__name__': self.name,
-            '__port__': port})
-
-        try:
-            while True:
-                data = socket.recv_json()
-                if data['tag'] == '__quit__':
-                    # means to shutdown the thread
-                    socket.close()
-                    # Put None in the queue to signal clients that are
-                    # waiting for data
-                    queue.put(None)
-                    confirm_to = data.get('confirm_to', None)
-                    if confirm_to is not None:
-                        # Confirm that the socket was closed
-                        with Sender(confirm_to) as sender:
-                            confirm_msg = data.get('confirm_msg', None)
-                            sender.put(confirm_msg)
-                    return
-                if data['tag'] == '__ping__':
-                    # answer special message without going to the receive,
-                    # since the actor may be doing something long lasting
-                    # and not reading the queue
-                    with Sender(data['reply_to']) as sender:
-                        sender.put({'tag': '__pong__'})
-                    # avoid inserting this message in the queue
-                    continue
-                if data['tag'] == '__tcp_ping__':
-                    # respond to a particular port
-                    reply_to_port = data['reply_to_port']
-                    reply_to_ip = data['reply_to_ip']
-                    reply_socket = Context.socket(zmq.PUSH)
-                    reply_socket.connect('tcp://{}:{}'.format(reply_to_ip,
-                                                              reply_to_port))
-                    reply_socket.send_json({'tag': '__pong__'})
-                    reply_socket.close()
-                    continue
-                queue.put(data)
-        except Exception:
-            import traceback
-            logger.debug('Reader thread for {} got an exception:'
-                         .format(socket_name))
-            logger.debug(traceback.format_exc())
+        with socket(zmq.PULL) as s:
+            if os.name == 'posix':
+                s.bind('ipc://%s' %self.path)
+            port = s.bind_to_random_port('tcp://*')
+            self.send_to_local_namebroker({
+                '__tag__': 'register',
+                '__name__': self.name,
+                '__port__': port})
+            try:
+                self._reader_loop(s)
+            except Exception:
+                import traceback
+                logger.debug('Reader thread for {} got an exception:'
+                             .format(self.path))
+                logger.debug(traceback.format_exc())
         
     def qsize(self):
         return self.reader_queue.qsize()
