@@ -261,29 +261,33 @@ class Server(object):
         self.thread.start()
 
     def stop(self):
-        socket = Context.socket(zmq.PUSH)
-        ip = self.ip if self.ip != '*' else 'localhost'
-        socket.connect('tcp://{}:{}'.format(ip, self.port))
-        socket.send_json({'__quit__': True})
-        self.thread.join()
-
+        with socket(zmq.REQ) as s:
+            ip = self.ip if self.ip != '*' else 'localhost'
+            s.connect('tcp://{}:{}'.format(ip, self.port))
+            s.send_json({'__quit__': True})
+            s.recv_json()
+            self.thread.join()
+            
     def _server(self, logger):
-        socket = Context.socket(zmq.PULL)
-        socket.bind('tcp://{}:{}'.format(self.ip, self.port))
-
-        try:
+        with socket(zmq.REP) as s:
+            s.bind('tcp://{}:{}'.format(self.ip, self.port))
             while True:
-                data = socket.recv_json()
-                if data.get('__quit__'):
-                    logger.debug('asked to shutdown')
-                    return
-                self.handle(data)
-        except Exception:
-            import traceback
-            logger.debug('got an exception:')
-            logger.debug(traceback.format_exc())
-        
+                data = s.recv_json()
+                resp = None
+                try:
+                    if data.get('__quit__'):
+                        logger.debug('asked to shutdown')
+                        return
+                    resp = self.handle(data)
+                except Exception:
+                    exc = traceback.format_exc()
+                    logger.debug('got an exception:')
+                    logger.debug(exc)
+                    resp = {'exception': exc}
+                finally:
+                    s.send_json(resp)
 
+                    
 class ExternalListener(Server):
 
     def handle(self, data):
