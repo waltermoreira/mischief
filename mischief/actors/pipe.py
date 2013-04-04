@@ -160,26 +160,18 @@ class Receiver(object):
     def __del__(self):
         self.close()
 
+
+def send_to_local_namebroker(msg, timeout=1000):
+    with socket(zmq.REQ) as s:
+        s.set(zmq.RCVTIMEO, timeout)
+        s.connect('tcp://localhost:{}'.format(NameBroker.PORT))
+        s.send_json(msg)
+        return s.recv_json()
+        
 def get_port_for(name, at):
-    my_ip = get_local_ip(at)
-    reply_socket = Context.socket(zmq.PULL)
-    my_port = reply_socket.bind_to_random_port('tcp://*')
-
-    socket = Context.socket(zmq.PUSH)
-    socket.connect('tcp://{}:{}'.format(at, NameBroker.PORT))
-    socket.send_json(
-        {'__tag__': 'get',
-         '__name__': name,
-         '__reply_to__': 'tcp://{}:{}'.format(my_ip, my_port)})
-    socket.close()
-
-    reply_socket.set(zmq.RCVTIMEO, 1000)
-    try:
-        resp = reply_socket.recv_json()
-        return resp['__port__']
-    finally:
-        reply_socket.close()
-
+    resp = send_to_local_namebroker({'__tag__': 'get',
+                                     '__name__': name})
+    return resp['__port__']
 
         
 class Sender(object):
@@ -310,21 +302,14 @@ class NameBroker(Server):
     def handle(self, data):
         cmd = data['__tag__']
         try:
-            getattr(self, cmd)(data)
+            return getattr(self, cmd)(data)
         except AttributeError:
-            pass
+            return None
 
     def get(self, data):
         name = data['__name__']
-        reply_to = data['__reply_to__']
         port = self.names.get(name, None)
-        try:
-            reply_socket = Context.socket(zmq.PUSH)
-            reply_socket.connect(reply_to)
-            reply_socket.send_json({'__port__': port})
-        finally:
-            reply_socket.close()
-        
+        return {'__port__': port}
         
     def register(self, data):
         name = data['__name__']
