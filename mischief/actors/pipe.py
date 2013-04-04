@@ -39,10 +39,19 @@ def path_to(name):
     return os.path.join(ACTORS_DIRECTORY, name)
 
 def get_local_ip(target):
+    """Get the *local* ip.
+
+    Warning: it doesn't mean the ``target`` would be able to connect
+    to the ``local`` ip (for example, if the ``local`` machine is
+    behind a NAT).
+
+    """
     ipaddr = ''
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect((target, 8000))
+        s.connect((target, 8000)) # 8000 is just a dummy number, it
+                                  # doesn't actually connect to the
+                                  # port
         ipaddr = s.getsockname()[0]
     finally:
         s.close()
