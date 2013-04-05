@@ -81,7 +81,7 @@ class Receiver(object):
         while True:
             data = socket.recv_json()
             try:
-                if data['tag'] == '__quit__':
+                if data['__tag__'] == '__quit__':
                     # means to shutdown the thread
                     # Close the socket just so the confirmation message
                     # goes after the socket is closed.  The 'with'
@@ -97,12 +97,12 @@ class Receiver(object):
                             confirm_msg = data.get('confirm_msg', None)
                             sender.put(confirm_msg)
                     return
-                if data['tag'] == '__ping__':
+                if data['__tag__'] == '__ping__':
                     # answer special message without going to the receive,
                     # since the actor may be doing something long lasting
                     # and not reading the queue
                     with Sender(data['reply_to']) as sender:
-                        sender.put({'tag': '__pong__'})
+                        sender.put({'__tag__': '__pong__'})
                     # avoid inserting this message in the queue
                     continue
             except Exception:
@@ -206,7 +206,7 @@ class Sender(object):
         self.socket.close()
 
     def close_receiver(self, confirm_to=None, confirm_msg=None):
-        self.put({'tag': '__quit__',
+        self.put({'__tag__': '__quit__',
                   'confirm_to': confirm_to,
                   'confirm_msg': confirm_msg})
         
