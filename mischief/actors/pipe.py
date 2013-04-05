@@ -171,8 +171,8 @@ def send_to_local_namebroker(at, msg, timeout=1000):
                 .format(at, NameBroker.PORT))
 
 def get_port_for(name, at):
-    resp = send_to_local_namebroker({'__tag__': 'get',
-                                     '__name__': name})
+    resp = send_to_local_namebroker(at, {'__tag__': 'get',
+                                         '__name__': name})
     return resp['__port__']
 
         
@@ -187,22 +187,41 @@ class Sender(object):
     """
 
     def __init__(self, name):
-        try:
-            self.my_actor = inspect.stack()[2][0].f_locals['self'].__class__
-        except:
-            self.my_actor = '%s-%s-%s' %tuple(inspect.stack()[2][1:4])
-
+        self.set_debug_name()
         self.ip, self.name = name.split(':') if ':' in name else (None, name)
         if os.name != 'posix' and self.ip is None:
             self.ip = 'localhost'
-        self.path = path_to(self.name)
-        self.socket = Context.socket(zmq.PUSH)
-        if self.ip is not None:
-            port = get_port_for(self.name, at=self.ip)
-            self.socket.connect('tcp://{}:{}'.format(self.ip, port))
+        if os.name != 'posix':
+            local = False
         else:
-            self.socket.connect('ipc://%s' %self.path)
+            local = is_ip_local(self.ip)
 
+        self.socket = Context.socket(zmq.PUSH)
+            
+        if local:
+            self.path = path_to(self.name)
+            logger.debug('Sender {} is using ipc'.format(name))
+            self.socket.connect('ipc://%s' %self.path)
+        else:
+            port = get_port_for(self.name, at=self.ip)
+            if port is None:
+                raise PipeException('No port registered for {name} at {ip}'
+                                    .format(ip=self.ip, name=self.name))
+            logger.debug('Sender {} is using tcp://{}:{}'.
+                         format(name, self.ip, port))
+            self.socket.connect('tcp://{}:{}'.format(self.ip, port))
+            
+        self.__ping__()
+
+    def set_debug_name(self):
+        try:
+            self.my_actor = inspect.stack()[3][0].f_locals['self'].__class__
+        except:
+            self.my_actor = '%s-%s-%s' %tuple(inspect.stack()[3][1:4])
+        
+    def __ping__(self):
+        pass
+        
     def __enter__(self):
         return self
 
