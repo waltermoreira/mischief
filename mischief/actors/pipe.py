@@ -64,10 +64,13 @@ def is_local_ip(target):
 
     
 @contextmanager
-def socket(zmq_type):
+def zmq_socket(zmq_type):
     s = Context.socket(zmq_type)
     yield s
     s.close()
+
+class PipeException(Exception):
+    pass
     
 class Receiver(object):
 
@@ -125,7 +128,7 @@ class Receiver(object):
         Thread function that reads the zmq socket and puts the data
         into the queue
         """
-        with socket(zmq.PULL) as s:
+        with zmq_socket(zmq.PULL) as s:
             if os.name == 'posix':
                 s.bind('ipc://%s' %self.path)
             port = s.bind_to_random_port('tcp://*')
@@ -155,13 +158,18 @@ class Receiver(object):
         self.close()
 
 
-def send_to_local_namebroker(msg, timeout=1000):
-    with socket(zmq.REQ) as s:
-        s.set(zmq.RCVTIMEO, timeout)
-        s.connect('tcp://localhost:{}'.format(NameBroker.PORT))
-        s.send_json(msg)
-        return s.recv_json()
-        
+def send_to_local_namebroker(at, msg, timeout=1000):
+    with zmq_socket(zmq.REQ) as s:
+        try:
+            s.set(zmq.RCVTIMEO, timeout)
+            s.connect('tcp://{}:{}'.format(at, NameBroker.PORT))
+            s.send_json(msg)
+            return s.recv_json()
+        except zmq.Again:
+            raise PipeException(
+                'cannot connect to NameBroker at {}:{}'
+                .format(at, NameBroker.PORT))
+
 def get_port_for(name, at):
     resp = send_to_local_namebroker({'__tag__': 'get',
                                      '__name__': name})
@@ -247,7 +255,7 @@ class Server(object):
         self.thread.start()
 
     def stop(self):
-        with socket(zmq.REQ) as s:
+        with zmq_socket(zmq.REQ) as s:
             ip = self.ip if self.ip != '*' else 'localhost'
             s.connect('tcp://{}:{}'.format(ip, self.port))
             s.send_json({'__quit__': True})
@@ -255,7 +263,7 @@ class Server(object):
             self.thread.join()
             
     def _server(self, logger):
-        with socket(zmq.REP) as s:
+        with zmq_socket(zmq.REP) as s:
             s.bind('tcp://{}:{}'.format(self.ip, self.port))
             while True:
                 data = s.recv_json()
