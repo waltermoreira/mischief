@@ -303,12 +303,11 @@ class NameBroker(Server):
             pass
 
     def list(self, data):
-        try:
+        if self.names:
             col = max(map(len, self.names))
-        except ValueError:
-            logger.debug('No registered names')
-            return
-        for name in self.names:
-            logger.debug('{{:>{}}}: {{}}'
-                         .format(col)
-                         .format(name, self.names[name]))
+            for name in self.names:
+                logger.debug('{{:>{}}}: {{}}'
+                             .format(col)
+                             .format(name, self.names[name]))
+        else:
+            logger.debug('No registered names')            
