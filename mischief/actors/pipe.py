@@ -47,8 +47,8 @@ def get_local_ip(target):
 
     """
     ipaddr = ''
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect((target, 8000)) # 8000 is just a dummy number, it
                                   # doesn't actually connect to the
                                   # port
