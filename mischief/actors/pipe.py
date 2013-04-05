@@ -80,27 +80,38 @@ class Receiver(object):
         queue = self.reader_queue
         while True:
             data = socket.recv_json()
-            if data['tag'] == '__quit__':
-                # means to shutdown the thread
-                socket.close()
-                # Put None in the queue to signal clients that are
-                # waiting for data
-                queue.put(None)
-                confirm_to = data.get('confirm_to', None)
-                if confirm_to is not None:
-                    # Confirm that the socket was closed
-                    with Sender(confirm_to) as sender:
-                        confirm_msg = data.get('confirm_msg', None)
-                        sender.put(confirm_msg)
-                return
-            if data['tag'] == '__ping__':
-                # answer special message without going to the receive,
-                # since the actor may be doing something long lasting
-                # and not reading the queue
-                with Sender(data['reply_to']) as sender:
-                    sender.put({'tag': '__pong__'})
-                # avoid inserting this message in the queue
-                continue
+            try:
+                if data['tag'] == '__quit__':
+                    # means to shutdown the thread
+                    # Close the socket just so the confirmation message
+                    # goes after the socket is closed.  The 'with'
+                    # statement of _reader would close it anyways.
+                    socket.close()
+                    # Put None in the queue to signal clients that are
+                    # waiting for data
+                    queue.put(None)
+                    confirm_to = data.get('confirm_to', None)
+                    if confirm_to is not None:
+                        # Confirm that the socket was closed
+                        with Sender(confirm_to) as sender:
+                            confirm_msg = data.get('confirm_msg', None)
+                            sender.put(confirm_msg)
+                    return
+                if data['tag'] == '__ping__':
+                    # answer special message without going to the receive,
+                    # since the actor may be doing something long lasting
+                    # and not reading the queue
+                    with Sender(data['reply_to']) as sender:
+                        sender.put({'tag': '__pong__'})
+                    # avoid inserting this message in the queue
+                    continue
+            except Exception:
+                exc = traceback.format_exc()
+                logger.debug('Reader thread for {} got an exception:'
+                             .format(self.path))
+                logger.debug(exc)
+                data = {'__tag__': '__exception__',
+                        'exception': exc}
             queue.put(data)
         
     def _reader(self, logger):
@@ -116,13 +127,7 @@ class Receiver(object):
                 '__tag__': 'register',
                 '__name__': self.name,
                 '__port__': port})
-            try:
-                self._reader_loop(s)
-            except Exception:
-                import traceback
-                logger.debug('Reader thread for {} got an exception:'
-                             .format(self.path))
-                logger.debug(traceback.format_exc())
+            self._reader_loop(s)
         
     def qsize(self):
         return self.reader_queue.qsize()
