@@ -267,16 +267,7 @@ class Server(object):
                 finally:
                     s.send_json(resp)
 
-                    
-class ExternalListener(Server):
 
-    def handle(self, data):
-        name = data['__to__']
-        logger.debug('Got data in external directed to {}'.format(name))
-        with Sender(name) as s:
-            s.put(data)
-
-            
 class NameBroker(Server):
 
     PORT = 5555
