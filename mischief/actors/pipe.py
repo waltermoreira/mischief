@@ -57,6 +57,12 @@ def get_local_ip(target):
         s.close()
     return ipaddr 
 
+def is_local_ip(target):
+    if target in (None, 'localhost', '127.0.0.1'):
+        return True
+    return target == get_local_ip(target)
+
+    
 @contextmanager
 def socket(zmq_type):
     s = Context.socket(zmq_type)
