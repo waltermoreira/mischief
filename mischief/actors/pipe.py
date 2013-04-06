@@ -85,6 +85,12 @@ class Receiver(object):
         self.reader_thread.daemon = True
         self.reader_thread.start()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+        
     def _reader_loop(self, socket):
         queue = self.reader_queue
         while True:
