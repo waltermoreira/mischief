@@ -138,10 +138,10 @@ class Receiver(object):
             if os.name == 'posix':
                 s.bind('ipc://%s' %self.path)
             port = s.bind_to_random_port('tcp://*')
-            self.send_to_local_namebroker({
-                '__tag__': 'register',
-                '__name__': self.name,
-                '__port__': port})
+            send_to_local_namebroker('localhost',
+                {'__tag__': 'register',
+                 '__name__': self.name,
+                 '__port__': port})
             self._reader_loop(s)
         
     def qsize(self):
