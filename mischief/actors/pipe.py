@@ -239,7 +239,7 @@ class Sender(object):
             return addr
         else:
             ip = get_local_ip(self.ip)
-            port = recv_socket.bind_to_random_port()
+            port = recv_socket.bind_to_random_port('tcp://*')
             return 'tcp://{}:{}'.format(ip, port)
             
     def __ping__(self):
