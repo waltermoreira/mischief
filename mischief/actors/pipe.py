@@ -120,6 +120,13 @@ class Receiver(object):
                         sender.put({'__tag__': '__pong__'})
                     # avoid inserting this message in the queue
                     continue
+                if data['__tag__'] == '__low_level_ping__':
+                    # answer a ping from a straight zmq socket
+                    sender = data['reply_to']
+                    with zmq_socket(zmq.PUSH) as s:
+                        s.connect(sender)
+                        s.send_json({'__tag__': '__pong__'})
+                    continue
             except Exception:
                 exc = traceback.format_exc()
                 logger.debug('Reader thread for {} got an exception:'
@@ -198,13 +205,13 @@ class Sender(object):
         if os.name != 'posix' and self.ip is None:
             self.ip = 'localhost'
         if os.name != 'posix':
-            local = False
+            self.local = False
         else:
-            local = is_ip_local(self.ip)
+            self.local = is_local_ip(self.ip)
 
         self.socket = Context.socket(zmq.PUSH)
             
-        if local:
+        if self.local:
             self.path = path_to(self.name)
             logger.debug('Sender {} is using ipc'.format(name))
             self.socket.connect('ipc://%s' %self.path)
@@ -217,17 +224,37 @@ class Sender(object):
                          format(name, self.ip, port))
             self.socket.connect('tcp://{}:{}'.format(self.ip, port))
             
-        self.__ping__()
+#        self.__ping__()
 
     def set_debug_name(self):
         try:
             self.my_actor = inspect.stack()[3][0].f_locals['self'].__class__
         except:
             self.my_actor = '%s-%s-%s' %tuple(inspect.stack()[3][1:4])
-        
+
+    def reply_to_address(self, recv_socket):
+        if self.local:
+            addr = 'ipc://__{}__'.format(self.name)
+            recv_socket.bind(addr)
+            return addr
+        else:
+            ip = get_local_ip(self.ip)
+            port = recv_socket.bind_to_random_port()
+            return 'tcp://{}:{}'.format(ip, port)
+            
     def __ping__(self):
-        pass
-        
+        with zmq_socket(zmq.PULL) as r:
+            _reply_to = self.reply_to_address(r)
+            logger.debug('reply_to = {}'.format(_reply_to))
+            self.socket.send_json({'__tag__': '__low_level_ping__',
+                                   'reply_to': _reply_to})
+            try:
+                r.set(zmq.RCVTIMEO, 1000)
+                resp = r.recv_json()
+                return resp['__tag__'] == '__pong__'
+            except zmq.Again:
+                return False
+            
     def __enter__(self):
         return self
 
