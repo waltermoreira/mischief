@@ -96,7 +96,8 @@ class Receiver(object):
         while True:
             data = socket.recv_json()
             try:
-                if data['__tag__'] == '__quit__':
+                __tag__ = data.get('__tag__')
+                if __tag__ == '__quit__':
                     # means to shutdown the thread
                     # Close the socket just so the confirmation message
                     # goes after the socket is closed.  The 'with'
@@ -112,7 +113,7 @@ class Receiver(object):
                             confirm_msg = data.get('confirm_msg', None)
                             sender.put(confirm_msg)
                     return
-                if data['__tag__'] == '__ping__':
+                if __tag__ == '__ping__':
                     # answer special message without going to the receive,
                     # since the actor may be doing something long lasting
                     # and not reading the queue
@@ -120,7 +121,7 @@ class Receiver(object):
                         sender.put({'__tag__': '__pong__'})
                     # avoid inserting this message in the queue
                     continue
-                if data['__tag__'] == '__low_level_ping__':
+                if __tag__ == '__low_level_ping__':
                     # answer a ping from a straight zmq socket
                     sender = data['reply_to']
                     with zmq_socket(zmq.PUSH) as s:
