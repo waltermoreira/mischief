@@ -265,8 +265,6 @@ class Sender(object):
     def write(self, data):
         logger.debug('Send from %s to %s' %(self.my_actor, self.name))
         logger.debug('  message: %s' %(data,))
-        if self.ip is not None:
-            data['__to__'] = self.name
         self.socket.send_json(data)
 
     def close(self):
