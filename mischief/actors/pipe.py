@@ -177,9 +177,9 @@ class Receiver(object):
                 s.bind('ipc://%s' %self.path)
             port = s.bind_to_random_port('tcp://*')
             send_to_namebroker('localhost',
-                {'__tag__': 'register',
-                 '__name__': self.name,
-                 '__port__': port})
+                               {'__tag__': 'register',
+                                '__name__': self.name,
+                                '__port__': port})
             self._reader_loop(s)
         
     def qsize(self):
