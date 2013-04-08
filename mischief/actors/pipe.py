@@ -200,7 +200,7 @@ class Sender(object):
     - ``ip:identifier``: a remote pipe
     """
 
-    def __init__(self, name):
+    def __init__(self, name, use_local=True):
         self.set_debug_name()
         self.ip, self.name = name.split(':') if ':' in name else (None, name)
         if os.name != 'posix' and self.ip is None:
@@ -208,7 +208,7 @@ class Sender(object):
         if os.name != 'posix':
             self.local = False
         else:
-            self.local = is_local_ip(self.ip)
+            self.local = use_local and is_local_ip(self.ip)
 
         self.socket = Context.socket(zmq.PUSH)
             
