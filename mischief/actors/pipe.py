@@ -225,7 +225,12 @@ class Sender(object):
                          format(name, self.ip, port))
             self.socket.connect('tcp://{}:{}'.format(self.ip, port))
             
-#        self.__ping__()
+        if not self.__ping__():
+            msg = ('Receiver ipc://{self.name} is not answering'
+                   if self.local else 
+                   ('Receiver tcp://{self.ip}:{port} (name "{self.name}"") '
+                   'is not answering'))
+            raise PipeException(msg.format(self=self, port=port))
 
     def set_debug_name(self):
         try:
