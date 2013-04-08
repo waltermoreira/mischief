@@ -194,6 +194,9 @@ class Receiver(object):
     def close(self, confirm_to=None, confirm_msg=None):
         with Sender(self.name) as sender:
             sender.close_receiver(confirm_to, confirm_msg)
+        send_to_namebroker('localhost',
+                           {'__tag__': 'unregister',
+                            '__name__': self.name})
         
     # synonym
     get = read
