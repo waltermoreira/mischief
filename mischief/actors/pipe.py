@@ -33,9 +33,7 @@ except OSError as exc:
 Context.linger = 5000 # ms
 
 def path_to(name):
-    """
-    Path for unix socket with name ``name``.
-    """
+    """Path for posix ipc socket with name ``name``."""
     return os.path.join(ACTORS_DIRECTORY, name)
 
 def get_local_ip(target):
@@ -58,6 +56,7 @@ def get_local_ip(target):
     return ipaddr 
 
 def is_local_ip(target):
+    """Check that ``target`` is a local ip."""
     if target in (None, 'localhost', '127.0.0.1'):
         return True
     return target == get_local_ip(target)
@@ -65,6 +64,14 @@ def is_local_ip(target):
     
 @contextmanager
 def zmq_socket(zmq_type):
+    """Context manager for zmq sockets.
+
+    Use as::
+
+        with zmq_socket(zmq.REP) as s:
+            ...
+    
+    """
     s = Context.socket(zmq_type)
     yield s
     s.close()
@@ -73,7 +80,30 @@ class PipeException(Exception):
     pass
     
 class Receiver(object):
+    """A receiver end of a pipe.
 
+    Instantiate with ``Receiver(my_name)``.  It registers ``my_name``
+    in the local namebroker.
+
+    Use as::
+
+        with Receiver('foo') as r:
+            ...
+            r.get()
+            ...
+
+    A receiver can get an special message that bypasses the fetching
+    of the data, and it can be used to check the reader loop is
+    running.  The message has the form::
+
+        {'__tag__': '__ping__',
+         'reply_to': sender_address}
+
+    If the reader loop is running, it will respond with the message
+
+        {'__tag__': '__pong__'}
+
+    """
     def __init__(self, name):
         self.name = name
         self.path = path_to(name)
@@ -146,7 +176,7 @@ class Receiver(object):
             if os.name == 'posix':
                 s.bind('ipc://%s' %self.path)
             port = s.bind_to_random_port('tcp://*')
-            send_to_local_namebroker('localhost',
+            send_to_namebroker('localhost',
                 {'__tag__': 'register',
                  '__name__': self.name,
                  '__port__': port})
@@ -172,7 +202,8 @@ class Receiver(object):
         self.close()
 
 
-def send_to_local_namebroker(at, msg, timeout=1000):
+def send_to_namebroker(at, msg, timeout=1000):
+    """Send message to NameBroker server at address ``at``."""
     with zmq_socket(zmq.REQ) as s:
         try:
             s.set(zmq.RCVTIMEO, timeout)
@@ -185,19 +216,31 @@ def send_to_local_namebroker(at, msg, timeout=1000):
                 .format(at, NameBroker.PORT))
 
 def get_port_for(name, at):
-    resp = send_to_local_namebroker(at, {'__tag__': 'get',
-                                         '__name__': name})
+    """Consult namebroker for the port associated to a name."""
+    resp = send_to_namebroker(at, {'__tag__': 'get',
+                                   '__name__': name})
     return resp['__port__']
 
         
 class Sender(object):
-    """
-    A sender pipe.
+    """The sender end of a pipe.
 
     ``name`` can be
 
     - ``identifier``: a local pipe
     - ``ip:identifier``: a remote pipe
+
+    A sender tries to use a local socket (ipc) if possible, unless the
+    argument ``use_local`` is set to ``False``. In non-posix systems,
+    it always use tcp.
+
+    Use as::
+
+        with Sender('foo') as s:
+            ...
+            s.put(msg)
+            ...
+    
     """
 
     def __init__(self, name, use_local=True):
@@ -229,16 +272,23 @@ class Sender(object):
             msg = ('Receiver ipc://{self.name} is not answering'
                    if self.local else 
                    ('Receiver tcp://{self.ip}:{port} (name "{self.name}"") '
-                   'is not answering'))
+                    'is not answering'))
             raise PipeException(msg.format(self=self, port=port))
 
     def set_debug_name(self):
+        """Name for debugging purposes.
+
+        Try to find the name of the object from where we are using the
+        sender.
+
+        """
         try:
             self.my_actor = inspect.stack()[3][0].f_locals['self'].__class__
         except:
             self.my_actor = '%s-%s-%s' %tuple(inspect.stack()[3][1:4])
 
-    def reply_to_address(self, recv_socket):
+    def _reply_to_address(self, recv_socket):
+        """Create a temporary socket to listen for replies."""
         if self.local:
             addr = 'ipc://__{}__'.format(self.name)
             recv_socket.bind(addr)
@@ -249,8 +299,13 @@ class Sender(object):
             return 'tcp://{}:{}'.format(ip, port)
             
     def __ping__(self):
+        """Low level ping.
+
+        Check the reader loop of the receiver is running.
+
+        """
         with zmq_socket(zmq.PULL) as r:
-            _reply_to = self.reply_to_address(r)
+            _reply_to = self._reply_to_address(r)
             logger.debug('reply_to = {}'.format(_reply_to))
             self.socket.send_json({'__tag__': '__low_level_ping__',
                                    'reply_to': _reply_to})
@@ -288,6 +343,7 @@ class Sender(object):
 
         
 class Server(object):
+    """A generic REQ/REP server."""
     
     def __init__(self, ip, port):
         self.ip = ip
@@ -339,6 +395,11 @@ class Server(object):
 
 
 class NameBroker(Server):
+    """A namebroker server.
+
+    Register, unregister, and provide ports associated to names.
+
+    """
 
     PORT = 5555
 
