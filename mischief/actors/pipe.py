@@ -122,10 +122,6 @@ class Receiver(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def address_relative_to(self, sender):
-        ip = get_local_ip(sender.ip)
-        return self.name, ip, self.port
-        
     def _reader_loop(self, socket):
         queue = self.reader_queue
         while True:
@@ -261,7 +257,7 @@ class Sender(object):
 
     def __init__(self, address, use_local=True):
         self.set_debug_name()
-        self.name, self.ip, self.port = address
+        self.name, self.ip, self.port = self.address = address
         self.local = (use_local and is_local_ip(self.ip)
                       if os.name == 'posix' else False)
         self.socket = Context.socket(zmq.PUSH)
@@ -295,16 +291,15 @@ class Sender(object):
         except:
             self.my_actor = '%s-%s-%s' %tuple(inspect.stack()[3][1:4])
 
-    def _reply_to_address(self, recv_socket):
+    def _temp_receiver(self, recv_socket):
         """Create a temporary socket to listen for replies."""
         if self.local:
             addr = 'ipc://__{}__'.format(self.name)
             recv_socket.bind(addr)
             return addr
         else:
-            ip = get_local_ip(self.ip)
             port = recv_socket.bind_to_random_port('tcp://*')
-            return 'tcp://{}:{}'.format(ip, port)
+            return 'tcp://{}:{}'.format(self.ip, port)
             
     def __ping__(self):
         """Low level ping.
@@ -313,10 +308,10 @@ class Sender(object):
 
         """
         with zmq_socket(zmq.PULL) as r:
-            _reply_to = self._reply_to_address(r)
-            logger.debug('reply_to = {}'.format(_reply_to))
+            address = self._temp_receiver(r)
+            logger.debug('reply_to = {}'.format(address))
             self.socket.send_json({'__tag__': '__low_level_ping__',
-                                   'reply_to': _reply_to})
+                                   'reply_to': address})
             try:
                 r.set(zmq.RCVTIMEO, 1000)
                 resp = r.recv_json()
