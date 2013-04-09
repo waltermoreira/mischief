@@ -442,11 +442,41 @@ class NameBroker(Server):
             pass
 
     def list(self, data):
-        if self.names:
-            col = max(map(len, self.names))
-            for name in self.names:
+        return self.names
+
+    def ping(self, data):
+        return {'__pong__': True}
+        
+    def is_alive(self):
+        return self.thread.is_alive()
+
+        
+class NameBrokerClient(object):
+
+    def __init__(self, at='localhost'):
+        self.addr = at
+
+    def is_server_alive(self):
+        try:
+            resp = send_to_namebroker(self.addr, {'__tag__': 'ping'})
+            return resp['__pong__']
+        except zmq.Again:
+            return False
+
+    def register(self, name, port):
+        send_to_namebroker(self.addr,
+                           {'__tag__': 'register',
+                            '__name__': name,
+                            '__port__': port})
+
+    def list(self):
+        names = send_to_namebroker(self.addr,
+                                   {'__tag__': 'list'})
+        if names:
+            col = max(map(len, names))
+            for name in names:
                 logger.debug('{{:>{}}}: {{}}'
                              .format(col)
-                             .format(name, self.names[name]))
+                             .format(name, names[name]))
         else:
-            logger.debug('No registered names')            
+            logger.debug('No registered names')
