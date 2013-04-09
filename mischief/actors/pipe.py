@@ -104,8 +104,9 @@ class Receiver(object):
         {'__tag__': '__pong__'}
 
     """
-    def __init__(self, name):
+    def __init__(self, name, use_remote=True):
         self.name = name
+        self.use_remote = use_remote
         self.path = path_to(name)
 
         self.reader_queue = Queue()
@@ -179,11 +180,14 @@ class Receiver(object):
         with zmq_socket(zmq.PULL) as s:
             if os.name == 'posix':
                 s.bind('ipc://%s' %self.path)
-            self.port = s.bind_to_random_port('tcp://*')
-            send_to_namebroker('localhost',
-                               {'__tag__': 'register',
-                                '__name__': self.name,
-                                '__port__': self.port})
+            if self.use_remote or os.name != 'posix':
+                self.port = s.bind_to_random_port('tcp://*')
+                send_to_namebroker('localhost',
+                                   {'__tag__': 'register',
+                                    '__name__': self.name,
+                                    '__port__': self.port})
+            else:
+                self.port = None
             self._reader_loop(s)
         
     def qsize(self):
