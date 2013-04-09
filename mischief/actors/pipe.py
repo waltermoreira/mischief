@@ -120,6 +120,10 @@ class Receiver(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+    def address_relative_to(self, sender):
+        ip = get_local_ip(sender.ip)
+        return self.name, ip, self.port
         
     def _reader_loop(self, socket):
         queue = self.reader_queue
@@ -175,11 +179,11 @@ class Receiver(object):
         with zmq_socket(zmq.PULL) as s:
             if os.name == 'posix':
                 s.bind('ipc://%s' %self.path)
-            port = s.bind_to_random_port('tcp://*')
+            self.port = s.bind_to_random_port('tcp://*')
             send_to_namebroker('localhost',
                                {'__tag__': 'register',
                                 '__name__': self.name,
-                                '__port__': port})
+                                '__port__': self.port})
             self._reader_loop(s)
         
     def qsize(self):
@@ -228,10 +232,12 @@ def get_port_for(name, at):
 class Sender(object):
     """The sender end of a pipe.
 
-    ``name`` can be
+    Usually, the address for the sender is returned by the
+    ``address_relative_to`` method of a receiver.
 
-    - ``identifier``: a local pipe
-    - ``ip:identifier``: a remote pipe
+    The address has the form::
+
+        (name, ip, port)
 
     A sender tries to use a local socket (ipc) if possible, unless the
     argument ``use_local`` is set to ``False``. In non-posix systems,
@@ -239,37 +245,32 @@ class Sender(object):
 
     Use as::
 
-        with Sender('foo') as s:
+        with Sender(address) as s:
             ...
             s.put(msg)
             ...
-    
+
+    If the port is not known, get it from the ``NameBroker``
+    objects.
+
     """
 
-    def __init__(self, name, use_local=True):
+    def __init__(self, address, use_local=True):
         self.set_debug_name()
-        self.ip, self.name = name.split(':') if ':' in name else (None, name)
-        if os.name != 'posix' and self.ip is None:
-            self.ip = 'localhost'
-        if os.name != 'posix':
-            self.local = False
-        else:
-            self.local = use_local and is_local_ip(self.ip)
-
+        self.name, self.ip, self.port = address
+        self.local = (use_local and is_local_ip(self.ip)
+                      if os.name == 'posix' else False)
         self.socket = Context.socket(zmq.PUSH)
             
         if self.local:
             self.path = path_to(self.name)
-            logger.debug('Sender {} is using ipc'.format(name))
-            self.socket.connect('ipc://%s' %self.path)
+            logger.debug('Sender {} is using ipc'.format(self.name))
+            self.socket.connect('ipc://{}'.format(self.path))
         else:
-            port = get_port_for(self.name, at=self.ip)
-            if port is None:
-                raise PipeException('No port registered for {name} at {ip}'
-                                    .format(ip=self.ip, name=self.name))
-            logger.debug('Sender {} is using tcp://{}:{}'.
-                         format(name, self.ip, port))
-            self.socket.connect('tcp://{}:{}'.format(self.ip, port))
+            logger.debug('Sender {self.name} is using '
+                         'tcp://{self.ip}:{self.port}'.format(self=self))
+            self.socket.connect('tcp://{self.ip}:{self.port}'
+                                .format(self=self))
             
         if not self.__ping__():
             msg = ('Receiver ipc://{self.name} is not answering'
