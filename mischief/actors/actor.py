@@ -32,11 +32,10 @@ import time
 import uuid
 import socket
 import inspect
-import psutil
 from pipe import Receiver, Sender
-from het2_common import log
+from .. import log
 
-logger = log.setup('actor', 'to_file')
+logger = log.setup(to=['file', 'console'])
 
 class ActorFinished(Exception):
     pass
@@ -46,9 +45,9 @@ class ActorRef(object):
     An actor reference.
     """
     
-    def __init__(self, name):
-        self.name = name
-        self.sender = Sender(name)
+    def __init__(self, address):
+        self.name, self.ip, self.port = self.address = address
+        self.sender = Sender(address)
         self._tag = None
 
     def sync(self, tag, **kwargs):
@@ -96,6 +95,7 @@ class ActorRef(object):
         if self._tag is None:
             raise TypeError("actor is not callable")
         msg = {'tag': self._tag}
+        # if kwargs[reply_to] is an actor, replace by actor.address_relative_to(ip-of-this-reference)
         msg.update(kwargs)
         self.send(msg)
         self._tag = None
@@ -119,7 +119,10 @@ class ActorRef(object):
         confirm_msg = {'tag': 'closed'}
         self.sender.close_receiver(confirm_to=confirm_to, confirm_msg=confirm_msg)
 
-        
+
+def gen_name():
+    return str(uuid.uuid1().hex)
+    
 class Actor(object):
     """
     Messages to the actor have the form::
@@ -132,20 +135,14 @@ class Actor(object):
     # ``INBOX_POLLING_TIMEOUT`` seconds whether we have timed out.
     INBOX_POLLING_TIMEOUT = 0.01
     
-    def __init__(self, name=None, prefix=''):
-        try:
-            self.name = name or '_'.join(filter(
-                None, ['a', prefix, str(uuid.uuid1().hex)[:8],
-                       self.my_id(inspect.stack()[2])]))
-        except Exception as exc:
-            self.name = '_'.join(filter(
-                None, ['a', prefix, str(uuid.uuid1().hex)]))
-        self.inbox = Receiver(self.name)
+    def __init__(self, name=None, ip='localhost'):
+        self.name = name or gen_name()
+        self.ip = ip
+        self.inbox = Receiver(self.name, self.ip)
 
-    def my_id(self, frame_record):
-        frame, f, lineno, fun = frame_record[0:4]
-        return '%s_%s_%s_%s' %(os.path.basename(f), lineno, fun, os.getpid())
-	         
+    def address(self):
+        return self.inbox.address()
+
     def __enter__(self):
         """
         Actor can be used as a context
@@ -267,9 +264,8 @@ class ThreadedActor(Actor):
     A threaded version of an actor.  It runs as a daemon thread.
     """
     
-    def __init__(self, name=None, prefix=''):
-        super(ThreadedActor, self).__init__(name=name,
-                                            prefix=prefix)
+    def __init__(self, name=None, ip='localhost'):
+        super(ThreadedActor, self).__init__(name, ip)
         self.thread = threading.Thread(target=self.act)
         self.thread.daemon = True
         self.thread.start()
@@ -282,7 +278,7 @@ class Echo(ThreadedActor):
     """
     
     def __init__(self):
-        super(Echo, self).__init__(name='echo')
+        super(Echo, self).__init__(name='echo', ip='localhost')
         
     def act(self):
         while True:

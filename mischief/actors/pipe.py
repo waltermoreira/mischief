@@ -104,8 +104,9 @@ class Receiver(object):
         {'__tag__': '__pong__'}
 
     """
-    def __init__(self, name, use_remote=True):
+    def __init__(self, name, ip='localhost', use_remote=True):
         self.name = name
+        self.ip = ip
         self.use_remote = use_remote
         self.path = path_to(name)
 
@@ -116,6 +117,9 @@ class Receiver(object):
         self.reader_thread.daemon = True
         self.reader_thread.start()
 
+    def address(self):
+        return (self.name, self.ip, self.port)
+        
     def __enter__(self):
         return self
 
@@ -196,7 +200,7 @@ class Receiver(object):
         return x
 
     def close(self, confirm_to=None, confirm_msg=None):
-        with Sender(self.name) as sender:
+        with Sender(self.address()) as sender:
             sender.close_receiver(confirm_to, confirm_msg)
         send_to_namebroker('localhost',
                            {'__tag__': 'unregister',
