@@ -32,7 +32,7 @@ import time
 import uuid
 import socket
 import inspect
-from pipe import Receiver, Sender
+from pipe import Receiver, Sender, is_local_ip, get_local_ip
 from .. import log
 
 logger = log.setup(to=['file', 'console'])
@@ -100,7 +100,12 @@ class ActorRef(object):
         if self._tag is None:
             raise TypeError("actor is not callable")
         msg = {'tag': self._tag}
-        # if kwargs[reply_to] is an actor, replace by actor.address_relative_to(ip-of-this-reference)
+        reply_to = kwargs.get('reply_to')
+        if isinstance(reply_to, (Actor, ActorRef)):
+            name, ip, port = reply_to.address()
+            if is_local_ip(ip):
+                ip = get_local_ip(self.ip)
+            kwargs['reply_to'] = (name, ip, port)
         msg.update(kwargs)
         self.send(msg)
         self._tag = None
