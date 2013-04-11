@@ -15,7 +15,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 from .. import log
 
-logger = log.setup(to=['file', 'console'])
+logger = log.setup(to=['file'])
 
 Context = zmq.Context()
 ACTORS_DIRECTORY = '/tmp/actors_%s' %os.environ.get('USER', 'NO_USER')
