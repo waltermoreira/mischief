@@ -147,6 +147,9 @@ class Receiver(object):
                         with Sender(confirm_to) as sender:
                             confirm_msg = data.get('confirm_msg', None)
                             sender.put(confirm_msg)
+                    send_to_namebroker('localhost',
+                                       {'__tag__': 'unregister',
+                                        '__name__': self.name})
                     return
                 if __tag__ == '__ping__':
                     # answer special message without going to the receive,
@@ -202,9 +205,6 @@ class Receiver(object):
     def close(self, confirm_to=None, confirm_msg=None):
         with Sender(self.address()) as sender:
             sender.close_receiver(confirm_to, confirm_msg)
-        send_to_namebroker('localhost',
-                           {'__tag__': 'unregister',
-                            '__name__': self.name})
         
     # synonym
     get = read
