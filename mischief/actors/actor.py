@@ -279,8 +279,8 @@ class Echo(ThreadedActor):
     Use by directing 'reply_to' to this actor.
     """
     
-    def __init__(self):
-        super(Echo, self).__init__(name='echo', ip='localhost')
+    def __init__(self, ip='localhost'):
+        super(Echo, self).__init__(name='echo', ip=ip)
         
     def act(self):
         while True:
