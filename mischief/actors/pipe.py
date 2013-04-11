@@ -113,7 +113,7 @@ class Receiver(object):
         self.reader_queue = Queue()
         self.reader_thread = threading.Thread(target=self._reader,
                                               args=(logger,))
-        self.reader_thread.name = 'reader-%s'%(self.name,)
+        self.reader_thread.name = 'receiver-%s'%(self.name,)
         self.reader_thread.daemon = True
         self.reader_thread.start()
 
@@ -199,7 +199,7 @@ class Receiver(object):
     def read(self, block=True, timeout=None):
         x = self.reader_queue.get(block, timeout)
         logger.debug('Receive at %s' %(self.name,))
-        logger.debug('  message: %s' %(x,))
+        logger.debug('  message: {}'.format(str(x)))
         return x
 
     def close(self, confirm_to=None, confirm_msg=None):
@@ -279,9 +279,9 @@ class Sender(object):
         if not self.__ping__():
             msg = ('Receiver ipc://{self.name} is not answering'
                    if self.local else 
-                   ('Receiver tcp://{self.ip}:{port} (name "{self.name}"") '
-                    'is not answering'))
-            raise PipeException(msg.format(self=self, port=port))
+                   ('Receiver tcp://{self.ip}:{self.port} '
+                    '(name "{self.name}") is not answering'))
+            raise PipeException(msg.format(self=self))
 
     def set_debug_name(self):
         """Name for debugging purposes.
