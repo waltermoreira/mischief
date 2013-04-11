@@ -163,7 +163,7 @@ class Actor(object):
         """
         Actor context closes it on exit
         """
-        with ActorRef(self.name) as myself:
+        with ActorRef(self.address()) as myself:
             myself.close_actor()
     
     def close(self, confirm_to=None):
