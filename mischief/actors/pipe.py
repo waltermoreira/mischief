@@ -303,7 +303,8 @@ class Sender(object):
             return addr
         else:
             port = recv_socket.bind_to_random_port('tcp://*')
-            return 'tcp://{}:{}'.format(self.ip, port)
+            ip = get_local_ip(self.ip)
+            return 'tcp://{}:{}'.format(ip, port)
             
     def __ping__(self):
         """Low level ping.
