@@ -17,6 +17,9 @@ from .. import log
 
 logger = log.setup(to=['file'])
 
+MIN_PORT = 50000
+MAX_PORT = 60000
+
 Context = zmq.Context()
 ACTORS_DIRECTORY = '/tmp/actors_%s' %os.environ.get('USER', 'NO_USER')
 try:
@@ -184,7 +187,8 @@ class Receiver(object):
             if os.name == 'posix':
                 s.bind('ipc://%s' %self.path)
             if self.use_remote or os.name != 'posix':
-                self.port = s.bind_to_random_port('tcp://*')
+                self.port = s.bind_to_random_port(
+                    'tcp://*', min_port=MIN_PORT, max_port=MAX_PORT)
                 send_to_namebroker('localhost',
                                    {'__tag__': 'register',
                                     '__name__': self.name,
@@ -302,7 +306,8 @@ class Sender(object):
             recv_socket.bind(addr)
             return addr
         else:
-            port = recv_socket.bind_to_random_port('tcp://*')
+            port = recv_socket.bind_to_random_port(
+                'tcp://*', min_port=MIN_PORT, max_port=MAX_PORT)
             ip = get_local_ip(self.ip)
             return 'tcp://{}:{}'.format(ip, port)
             
