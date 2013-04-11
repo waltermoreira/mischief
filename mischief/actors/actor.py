@@ -46,10 +46,13 @@ class ActorRef(object):
     """
     
     def __init__(self, address):
-        self.name, self.ip, self.port = self.address = address
+        self.name, self.ip, self.port = self._address = address
         self.sender = Sender(address)
         self._tag = None
 
+    def address(self):
+        return self._address
+        
     def sync(self, tag, **kwargs):
         """
         Utility to send a message synchronously
