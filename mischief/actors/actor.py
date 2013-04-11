@@ -70,6 +70,8 @@ class ActorRef(object):
             return listener.pong
         
     def __getattr__(self, attr):
+        if attr.startswith('_') or attr == 'trait_names':
+            raise AttributeError(attr)
         self._tag = attr
         return self
 
