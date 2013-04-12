@@ -114,8 +114,9 @@ class Receiver(object):
         self.path = path_to(name)
 
         self.reader_queue = Queue()
+        socket = self.setup_reader()
         self.reader_thread = threading.Thread(target=self._reader,
-                                              args=(logger,))
+                                              args=(logger, socket))
         self.reader_thread.name = 'receiver-%s'%(self.name,)
         self.reader_thread.daemon = True
         self.reader_thread.start()
@@ -129,7 +130,17 @@ class Receiver(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
+    def _reader(self, logger, socket):
+        try:
+            self._reader_loop(socket)
+        finally:
+            socket.close()
+            
     def _reader_loop(self, socket):
+        """
+        Thread function that reads the zmq socket and puts the data
+        into the queue
+        """
         queue = self.reader_queue
         while True:
             data = socket.recv_json()
@@ -178,24 +189,21 @@ class Receiver(object):
                         'exception': exc}
             queue.put(data)
         
-    def _reader(self, logger):
-        """
-        Thread function that reads the zmq socket and puts the data
-        into the queue
-        """
-        with zmq_socket(zmq.PULL) as s:
-            if os.name == 'posix':
-                s.bind('ipc://%s' %self.path)
-            if self.use_remote or os.name != 'posix':
-                self.port = s.bind_to_random_port(
-                    'tcp://*', min_port=MIN_PORT, max_port=MAX_PORT)
-                send_to_namebroker('localhost',
-                                   {'__tag__': 'register',
-                                    '__name__': self.name,
-                                    '__port__': self.port})
-            else:
-                self.port = None
-            self._reader_loop(s)
+    def setup_reader(self):
+        """Create the socket for the reader and bind it."""
+        s = Context.socket(zmq.PULL)
+        if os.name == 'posix':
+            s.bind('ipc://%s' %self.path)
+        if self.use_remote or os.name != 'posix':
+            self.port = s.bind_to_random_port(
+                'tcp://*', min_port=MIN_PORT, max_port=MAX_PORT)
+            send_to_namebroker('localhost',
+                               {'__tag__': 'register',
+                                '__name__': self.name,
+                                '__port__': self.port})
+        else:
+            self.port = None
+        return s
         
     def qsize(self):
         return self.reader_queue.qsize()
