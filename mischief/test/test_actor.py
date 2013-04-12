@@ -20,35 +20,34 @@ def test_reply(nb, t):
             return result[0]
     with a() as x, ActorRef(t.address()) as qt:
         qt.reply5(reply_to=x)
-        assert x.act() == 5
+        u = x.act()
+        assert u == 5
 
-# def test_inbox(t):
-#     class a(Actor):
-#         def act(self):
-#             result = []
-#             self.receive({
-#                 'answer': lambda msg: result.append(msg['answer'])})
-#             return result[0]
-#     x = a()
-#     qt = ActorRef('t')
-#     qt.foo()
-#     qt.bar()
-#     qt.queue(reply_to=x.name)
-#     assert x.act() == 2
-#     x.close()
+def test_inbox(nb, t):
+    class a(Actor):
+        def act(self):
+            result = []
+            self.receive(
+                answer = lambda msg: result.append(msg['answer']))
+            return result[0]
+    with a() as x, ActorRef(t.address()) as qt:
+        qt.foo()
+        qt.bar()
+        qt.reply2(reply_to=x)
+        u = x.act()
+        assert u == 2
 
-# def test_wildcard(t):
-#     class a(Actor):
-#         def act(self):
-#             result = []
-#             self.receive(
-#                 _ = lambda msg: result.append(msg['tag']))
-#             return result
-#     x = a()
-#     qa = ActorRef(x.name)
-#     qa.foo()
-#     assert x.act() == ['foo']
-#     x.close()
+def test_wildcard(nb):
+    class a(Actor):
+        def act(self):
+            result = []
+            self.receive(
+                _ = lambda msg: result.append(msg['tag']))
+            return result
+    with a() as x, ActorRef(x.address()) as qa:
+        qa.foo()
+        u = x.act()
+        assert u == ['foo']
 
 # def test_timeout(t):
 #     class a(Actor):
