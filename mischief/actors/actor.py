@@ -100,12 +100,6 @@ class ActorRef(object):
         if self._tag is None:
             raise TypeError("actor is not callable")
         msg = {'tag': self._tag}
-        reply_to = kwargs.get('reply_to')
-        if isinstance(reply_to, (Actor, ActorRef)):
-            name, ip, port = reply_to.address()
-            if is_local_ip(ip):
-                ip = get_local_ip(self.ip)
-            kwargs['reply_to'] = (name, ip, port)
         msg.update(kwargs)
         self.send(msg)
         self._tag = None
@@ -115,6 +109,12 @@ class ActorRef(object):
         Send a message to the actor represented by this reference.
         """
         self.sender.put(msg)
+        reply_to = msg.get('reply_to')
+        if isinstance(reply_to, (Actor, ActorRef)):
+            name, ip, port = reply_to.address()
+            if is_local_ip(ip):
+                ip = get_local_ip(self.ip)
+            msg['reply_to'] = (name, ip, port)
 
     def close(self):
         """
