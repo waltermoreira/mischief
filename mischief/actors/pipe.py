@@ -222,7 +222,8 @@ class Receiver(object):
     get = read
 
     def __del__(self):
-        self.close()
+        pass
+        # self.close()
 
 
 def send_to_namebroker(at, msg, timeout=1000):
