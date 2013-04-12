@@ -6,10 +6,7 @@ import time
 import py
 import os
 
-# # Add path of tests to PYTHONPATH, since ProcessActor need to be in
-# # the path
-# os.environ['PYTHONPATH'] = ':'.join([os.environ['PYTHONPATH'],
-#                                      os.path.join(DEPLOY_PATH, 'test')])
+# add test for 'reply_to' actors and actorrefs
 
 def test_reply(nb, t):
     class a(Actor):
@@ -49,101 +46,87 @@ def test_wildcard(nb):
         u = x.act()
         assert u == ['foo']
 
-# def test_timeout(t):
-#     class a(Actor):
-#         def act(self):
-#             result = [False]
-#             self.receive(
-#                 timed_out = lambda msg: result.append(True),
-#                 timeout = 0.1)
-#             return result
-#     x = a()
-#     assert x.act()[-1]
-#     x.close()
-
-# def test_read_value(t):
-#     class a(Actor):
-#         def act(self):
-#             self.receive(
-#                 ack = self.read_value('foo'))
-#             return self.foo
-#     x = a()
-#     qm = ActorRef(x.name)
-#     qm.ack(foo=5)
-#     assert x.act() == 5
-#     x.close()
+def test_timeout(nb):
+    class a(Actor):
+        def act(self):
+            result = [False]
+            self.receive(
+                timed_out = lambda msg: result.append(True),
+                timeout = 0.1)
+            return result
+    with a() as x:
+        u = x.act()
+        assert u[-1]
 
 
-# def test_new_api(t):
-#     class a(Actor):
-#         def act(self):
-#             self.receive({'foo': self.foo})
-#             return self._msg
-#         def foo(self, msg):
-#             self._msg = msg
-#     x = a()
-#     qx = ActorRef(x.name)
-#     qx.foo(bar=5, baz='baz')
-#     msg = x.act()
-#     assert (msg['tag'] == 'foo' and
-#             msg['bar'] == 5 and
-#             msg['baz'] == 'baz')
-#     x.close()
+def test_new_api(nb):
+    class a(Actor):
+        def act(self):
+            self.receive(
+                foo = self.foo)
+            return self._msg
+        def foo(self, msg):
+            self._msg = msg
+    with a() as x, ActorRef(x.address()) as qx:
+        qx.foo(bar=5, baz='baz')
+        msg = x.act()
+        assert (msg['tag'] == 'foo' and
+                msg['bar'] == 5 and
+                msg['baz'] == 'baz')
 
-# def test_new_api_2(t):
-#     class a(Actor):
-#         pass
-#     x = a()
-#     qx = ActorRef(x.name)
-#     with py.test.raises(TypeError):
-#         qx()
-#     qx.foo()
-#     with py.test.raises(TypeError):
-#         qx()
-#     x.close()
+def test_new_api_2(nb):
+    class a(Actor):
+        pass
+    with a() as x, ActorRef(x.address()) as qx:
+        with py.test.raises(TypeError):
+            qx()
+        qx.foo()
+        with py.test.raises(TypeError):
+            qx()
 
-# def test_many_msgs(t):
-#     # Send many msgs to one actor, collect them and count them
-#     class a(ThreadedActor):
-#         def __init__(self):
-#             super(a, self).__init__()
-#             self.results = {}
-#         def act(self):
-#             try:
-#                 while True:
-#                     self.receive(add=self.add)
-#             except ActorFinished:
-#                 pass
-#         def add(self, msg):
-#             self.results[msg['i']] = 1
-#             if sorted(self.results.keys()) == range(100):
-#                 with ActorRef(msg['reply_to']) as sender:
-#                     sender.got_all()
-#     class b(Actor):
-#         def act(self):
-#             result = []
-#             self.receive(got_all=lambda msg: result.append(True),
-#                          timed_out=lambda msg: result.append(False),
-#                          timeout=2)
-#             return result
-#     # Create many instances to check the pipes are refreshed for each instance
-#     actors = [a() for i in range(4)]
-#     y = b()
-#     x_ref = ActorRef(actors[-1].name)
-#     for i in range(100):
-#         x_ref.add(i=i, reply_to=y.name)
-#     res = y.act()
-#     assert res == [True]
-#     [x.close() for x in actors]
-#     y.close()
+def test_many_msgs(nb):
+    # Send many msgs to one actor, collect them and count them
+    class a(ThreadedActor):
+        def __init__(self):
+            super(a, self).__init__()
+            self.results = {}
+        def act(self):
+            try:
+                while True:
+                    self.receive(add=self.add)
+            except ActorFinished:
+                pass
+        def add(self, msg):
+            self.results[msg['i']] = 1
+            if sorted(self.results.keys()) == range(100):
+                with ActorRef(msg['reply_to']) as sender:
+                    sender.got_all()
+    class b(Actor):
+        def act(self):
+            result = []
+            self.receive(got_all=lambda msg: result.append(True),
+                         timed_out=lambda msg: result.append(False),
+                         timeout=2)
+            return result
+    # Create many instances to check the pipes are refreshed for each instance
+    actors = [a() for i in range(4)]
+    y = b()
+    x_ref = ActorRef(actors[-1].address())
+    for i in range(100):
+        x_ref.add(i=i, reply_to=y)
+    res = y.act()
+    assert res == [True]
+    [x.close() for x in actors]
+    y.close()
 
 # def test_reply(p):
 #     class a(Actor):
 #         def act(self):
 #             result = []
-#             self.receive({
-#                 'answer': lambda msg: result.append(msg['answer'])})
+#             self.receive(
+#                 answer = lambda msg: result.append(msg['answer']))
 #             return result[0]
+
 #     x = a('a')
 #     qt = ActorRef('p')
 #     qt.send({'tag': 'reply',
