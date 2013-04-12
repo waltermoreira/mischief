@@ -68,7 +68,8 @@ class ActorRef(object):
         Send a ping to the associated actor and wait for a pong
         """
         with _ListenerActor() as listener:
-            self.__ping__(reply_to=listener.name)
+            self.send({'__tag__': '__ping__',
+                       'reply_to': listener})
             listener.wait_pong(timeout=0.5)
             return listener.pong
         
@@ -108,13 +109,13 @@ class ActorRef(object):
         """
         Send a message to the actor represented by this reference.
         """
-        self.sender.put(msg)
         reply_to = msg.get('reply_to')
         if isinstance(reply_to, (Actor, ActorRef)):
             name, ip, port = reply_to.address()
             if is_local_ip(ip):
                 ip = get_local_ip(self.ip)
             msg['reply_to'] = (name, ip, port)
+        self.sender.put(msg)
 
     def close(self):
         """
