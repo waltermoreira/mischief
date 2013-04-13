@@ -59,7 +59,7 @@ class ActorRef(object):
         """
         with _ReplyWaiter() as waiter:
             kwargs['tag'] = tag
-            kwargs['reply_to'] = waiter.name
+            kwargs['reply_to'] = waiter
             self.send(kwargs)
             return waiter.act()
             
