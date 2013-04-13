@@ -217,10 +217,10 @@ class Actor(object):
             except Queue.Empty:
                 continue
             try:
-                if msg['tag'] == '_ping':
-                    # Special handler for _ping, since we don't want
+                if msg['tag'] == '_debug':
+                    # Special handler for _debug, since we don't want
                     # to break the loop
-                    self._pong(msg)
+                    self._debug(msg, patterns)
                     continue
                 if msg['tag'] in patterns:
                     matched = msg['tag']
@@ -257,12 +257,16 @@ class Actor(object):
             f = lambda msg: None
         f(msg)
 
-    def _pong(self, msg):
-        """
-        Special method to respond to a ping
+    def _debug(self, msg, patterns):
+        """Special method to respond to a _debug message.
+
+        Answer the patterns of the receive where the actor is when
+        receiving the message.
+
         """
         with ActorRef(msg['reply_to']) as sender:
-            sender._pong()
+            p = {key:repr(val) for key, val in patterns.items()}
+            sender.debug_reply(patterns=p)
             
     def act(self):
         """
