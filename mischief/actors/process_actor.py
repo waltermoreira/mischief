@@ -23,10 +23,15 @@ Launch actor with:
 Keyword arguments are set in the actor in the new process.
 """
 
-from het2_common.actors.actor import Actor, ActorRef, ActorFinished
-import importlib
-import os
 import sys
+import os
+print 'sys.path', sys.path
+sys.path.append(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../'))
+print 'now, sys.path', sys.path
+
+from mischief.actors.actor import Actor, ActorRef, ActorFinished
+import importlib
 import subprocess
 
 class ProcessActor(Actor):
@@ -38,8 +43,8 @@ class ProcessActor(Actor):
     
     def __init__(self, *args, **kwargs):
         if self.launch:
-            self.name, self.pid = start_actor(self.__class__.__name__,
-                                              self.__class__.__module__)
+            self.remote_addr, self.pid = start_actor(self.__class__.__name__,
+                                                     self.__class__.__module__)
         else:
             super(ProcessActor, self).__init__(*args, **kwargs)
 
@@ -79,11 +84,18 @@ class WaitActor(Actor):
         super(WaitActor, self).__init__()
         
     def act(self):
-        self.receive(ok=self.read_reply)
-        return self.spawn_name, self.pid
+        self.success = True
+        self.receive(
+            ok = self.read_reply,
+            timed_out = lambda _: setattr(self, 'success', False),
+            timeout = 5
+        )
+        if not self.success:
+            raise SpawnTimeoutError("did not get 'ok' from subprocess")
+        return self.spawn_address, self.pid
 
     def read_reply(self, msg):
-        self.spawn_name = msg['spawn_name']
+        self.spawn_address = msg['spawn_address']
         self.pid = msg['pid']
         
 def start_actor(name, module):
@@ -98,33 +110,60 @@ def start_actor(name, module):
     if myself.endswith('.pyc'):
         myself = myself[:-1]
     with WaitActor() as w:
-        p = subprocess.Popen(['python', myself, w.name, name, module])
+        w_name, _, _ = w.address()
+        p = subprocess.Popen(['python', myself, w_name, name, module])
         return w.act()
 
-def spawn(actor, ref_name=None, **kwargs):
+class SpawnTimeoutError(Exception):
+    pass
+    
+def spawn(actor, name=None, **kwargs):
     """
     Utility function to start a process actor and initialize it
     """
-    if ref_name is not None:
-        with ActorRef(ref_name) as ref:
+    if name is not None:
+        with ActorRef((name, 'localhost', None)) as ref:
             # Do not start if it's already alive
             if ref.is_alive():
                 return
     a = actor()
+
     class Wait(Actor):
         def act(self):
-            self.receive(finished_init=None)
-    with ActorRef(a.name) as ref, Wait() as wait:
-        ref.init(reply_to=wait.name, **kwargs)
-        wait.act()
-    return a.name, a.pid
+            self.success = True
+            self.receive(
+                finished_init = None,
+                timed_out = lambda _: setattr(self, 'success', False),
+                timeout = 5)
+            return self.success
+
+    print 'Before with'
+    with ActorRef(a.remote_addr) as ref, Wait() as wait:
+        print 'In with, before ref.init'
+        ref.init(reply_to=wait, **kwargs)
+        print 'After ref.init, before wait.act'
+        if wait.act():
+            return a.remote_addr, a.pid
+        else:
+            raise SpawnTimeoutError('failed to init remote process')
+
+class PEcho(ProcessActor):
+
+    def __init__(self):
+        super(PEcho, self).__init__()
+
+    def process_act(self):
+        self.receive(
+            _ = self.do_pecho
+        )
+
+    def do_pecho(self, msg):
+        print 'Process Echo:'
+        print msg
+
     
 if __name__ == '__main__':
-    wait_ref = sys.argv[1]
-    wait = ActorRef(wait_ref)
-
-    actor_class = sys.argv[2]
-    actor_module = sys.argv[3]
+    _, wait_name, actor_class, actor_module = sys.argv
     mod = importlib.import_module(actor_module)
     cls = getattr(mod, actor_class)
     # Signal the base class ``ProcessActor`` to not start a new
@@ -132,9 +171,9 @@ if __name__ == '__main__':
     cls.launch = False
     actor = cls()
     
-    # Tell parent to keep going
-    wait.ok(spawn_name=actor.name, pid=os.getpid())
-    wait.close()
+    with ActorRef(wait_name) as wait:
+        # Tell parent to keep going
+        wait.ok(spawn_address=actor.address(), pid=os.getpid())
 
     # The new process ends when the client's actor finishes its
     # ``act`` method.
