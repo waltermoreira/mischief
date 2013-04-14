@@ -173,6 +173,12 @@ class Receiver(object):
                         sender.put({'tag': '__pong__'})
                     # avoid inserting this message in the queue
                     continue
+                if __tag__ == '__address__':
+                    # Fill the port info for my address
+                    with Sender(data['reply_to']) as sender:
+                        sender.put({'tag': 'reply',
+                                    'address': self.address()})
+                    continue
                 if __tag__ == '__low_level_ping__':
                     # answer a ping from a straight zmq socket
                     sender = data['reply_to']

@@ -74,6 +74,12 @@ class ActorRef(object):
                        'reply_to': listener})
             listener.wait_pong(timeout=0.5)
             return listener.pong
+
+    def full_address(self):
+        with _ReplyWaiter() as waiter:
+            self.send({'__tag__': '__address__',
+                       'reply_to': waiter})
+            return waiter.act()['address']
         
     def __getattr__(self, attr):
         if attr.startswith('_') or attr == 'trait_names':
