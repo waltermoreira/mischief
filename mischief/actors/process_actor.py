@@ -25,10 +25,11 @@ Keyword arguments are set in the actor in the new process.
 
 import sys
 import os
-print 'sys.path', sys.path
+
+# Add mischief package to sys.path, so the python subprocess can find
+# this same file
 sys.path.append(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../'))
-print 'now, sys.path', sys.path
 
 from mischief.actors.actor import Actor, ActorRef, ActorFinished
 import importlib
@@ -137,11 +138,8 @@ def spawn(actor, name=None, **kwargs):
                 timeout = 5)
             return self.success
 
-    print 'Before with'
     with ActorRef(a.remote_addr) as ref, Wait() as wait:
-        print 'In with, before ref.init'
         ref.init(reply_to=wait, **kwargs)
-        print 'After ref.init, before wait.act'
         if wait.act():
             return a.remote_addr, a.pid
         else:
