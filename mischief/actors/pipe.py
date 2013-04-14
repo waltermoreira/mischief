@@ -177,7 +177,8 @@ class Receiver(object):
                     # Fill the port info for my address
                     with Sender(data['reply_to']) as sender:
                         sender.put({'tag': 'reply',
-                                    'address': self.address()})
+                                    'address': self.address(),
+                                    'pid': os.getpid()})
                     continue
                 if __tag__ == '__low_level_ping__':
                     # answer a ping from a straight zmq socket

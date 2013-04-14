@@ -79,7 +79,8 @@ class ActorRef(object):
         with _ReplyWaiter() as waiter:
             self.send({'__tag__': '__address__',
                        'reply_to': waiter})
-            return waiter.act()['address']
+            resp = waiter.act()
+            return resp['address'], resp['pid']
         
     def __getattr__(self, attr):
         if attr.startswith('_') or attr == 'trait_names':
