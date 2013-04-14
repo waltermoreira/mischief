@@ -125,7 +125,7 @@ def spawn(actor, name=None, **kwargs):
         with ActorRef((name, 'localhost', None)) as ref:
             # Do not start if it's already alive
             if ref.is_alive():
-                return
+                return ref.full_address()
     a = actor()
 
     class Wait(Actor):
