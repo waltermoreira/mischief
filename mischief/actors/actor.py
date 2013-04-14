@@ -46,8 +46,10 @@ class ActorRef(object):
     """
     
     def __init__(self, address):
-        self.name, self.ip, self.port = self._address = address
-        self.sender = Sender(address)
+        self._address = (address if not isinstance(address, basestring)
+                         else (address, 'localhost', None))
+        self.name, self.ip, self.port = self._address
+        self.sender = Sender(self._address)
         self._tag = None
 
     def address(self):
