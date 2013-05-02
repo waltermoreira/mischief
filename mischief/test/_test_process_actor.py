@@ -1,4 +1,4 @@
-from het2_common.actors.actor import Actor, ActorRef
+from mischief.actors.actor import Actor, ActorRef
 import time
 
 def test_reply(qm):

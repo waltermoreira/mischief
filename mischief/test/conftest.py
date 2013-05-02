@@ -16,12 +16,6 @@ from mischief.actors.pipe import NameBroker
 # import os
 # from proc_actor import _process_actor, _with_name, _with_name_2
 
-# # def pytest_funcarg__qm(request):
-# #     return request.cached_setup(
-# #         setup=create_queue_manager,
-# #         teardown=lambda x: destroy(),
-# #         scope='session')
-
 # # def destroy():
 # #     ActorRef('t').destroy_actor()
 # #     ActorRef('p').send({'tag': 'quit'})
@@ -60,27 +54,20 @@ def pytest_funcarg__nb(request):
         teardown=lambda x: x.stop(),
         scope='session')
     
-# # def create_queue_manager():
-# #     t = _threaded_actor('t')
-# #     process_actor()
-# #     p = _process_actor('p')
+def pytest_funcarg__p(request):
+    return request.cached_setup(
+        setup=create_process_actor,
+        teardown=lambda x: x.close_actor(),
+        scope='session')
 
-
-# def create_threaded_actor():
-#     return _threaded_actor('t')
-
-# def pytest_funcarg__p(request):
-#     return request.cached_setup(
-#         setup=create_process_actor,
-#         teardown=lambda x: x.close_actor(),
-#         scope='session')
-
-# def create_process_actor():
-#     spawn(_process_actor, 'p')
-#     ref = ActorRef('p')
-#     while not ref.is_alive():
-#         time.sleep(0.1)
-#     return ref
+def create_process_actor():
+    spawn(_process_actor, name='p')
+    ref = ActorRef('p')
+    for _ in range(100):
+        if ref.is_alive():
+            break
+        time.sleep(0.1)
+    return ref
 
 # def pytest_funcarg__q(request):
 #     return _with_name
