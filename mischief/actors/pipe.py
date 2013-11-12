@@ -81,6 +81,9 @@ def zmq_socket(zmq_type):
 
 class PipeException(Exception):
     pass
+
+class PipeEmpty(PipeException):
+    pass
     
 class Receiver(object):
     """A receiver end of a pipe.
@@ -216,11 +219,14 @@ class Receiver(object):
         return self.reader_queue.qsize()
         
     def read(self, block=True, timeout=None):
-        x = self.reader_queue.get(block, timeout)
-        logger.debug('Receive at %s' %(self.name,))
-        logger.debug('  message: {}'.format(str(x)))
-        return x
-
+        try:
+            x = self.reader_queue.get(block, timeout)
+            logger.debug('Receive at %s' %(self.name,))
+            logger.debug('  message: {}'.format(str(x)))
+            return x
+        except Empty:
+            raise PipeEmpty()
+        
     def close(self, confirm_to=None, confirm_msg=None):
         with Sender(self.address()) as sender:
             sender.close_receiver(confirm_to, confirm_msg)
