@@ -481,7 +481,7 @@ class NameBrokerClient(object):
         try:
             resp = send_to_namebroker(self.addr, {'__tag__': 'ping'})
             return resp['__pong__']
-        except zmq.Again:
+        except PipeException:
             return False
 
     def register(self, name, port):
