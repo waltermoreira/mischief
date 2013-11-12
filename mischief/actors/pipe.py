@@ -1,5 +1,5 @@
-from itertools import izip_longest, imap
-from Queue import Queue
+from itertools import zip_longest
+from queue import Queue
 import time
 import struct
 import uuid

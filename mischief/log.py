@@ -1,5 +1,5 @@
 """
-Tools to log to screen, rolling files, and logger server.
+Tools to log to screen and rolling files
 """
 
 import logging
@@ -12,14 +12,13 @@ import itertools
 import re
 import inspect
 from .tools import pairwise
-from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 
 formatter = logging.Formatter(
     fmt='%(asctime)s %(levelname)s %(module)s:%(lineno)s %(message)s')
 
 def setup(**args):
     destinations = args['to']
-    if isinstance(destinations, basestring):
+    if isinstance(destinations, str):
         destinations = [destinations]
     try:
         outer_frame = inspect.stack()[1][0]
