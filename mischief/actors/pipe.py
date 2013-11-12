@@ -1,5 +1,5 @@
 from itertools import zip_longest
-from queue import Queue
+from queue import Queue, Empty
 import time
 import struct
 import uuid
@@ -53,7 +53,10 @@ def get_local_ip(target):
         s.connect((target, 8000)) # 8000 is just a dummy number, it
                                   # doesn't actually connect to the
                                   # port
+        s.send(b'1')
         ipaddr = s.getsockname()[0]
+    except socket.error:
+        pass
     finally:
         s.close()
     return ipaddr 
