@@ -428,6 +428,12 @@ class NameBroker(Server):
 
     Register, unregister, and provide ports associated to names.
 
+    Create it and start it with::
+
+        x = NameBroker()
+        x.start()
+        x.stop()
+    
     """
 
     PORT = 5555
@@ -473,7 +479,16 @@ class NameBroker(Server):
 
         
 class NameBrokerClient(object):
+    """
+    Client for the NameBroker server.
 
+    Use as::
+
+        y = NameBrokerClient()
+        y.list()
+    
+    """
+    
     def __init__(self, at='localhost'):
         self.addr = at
 
