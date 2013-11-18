@@ -112,11 +112,13 @@ class Receiver(object):
 
         {'__tag__': '__pong__'}
 
+    Receiver requires the dependencies: NameBrokerClient and Sender.
     """
     def __init__(self, name, ip='localhost', use_remote=True):
         self.name = name
         self.ip = ip
         self.use_remote = use_remote
+        
         self.path = path_to(name)
 
         self.reader_queue = Queue()
@@ -167,9 +169,9 @@ class Receiver(object):
                         with Sender(confirm_to) as sender:
                             confirm_msg = data.get('confirm_msg', None)
                             sender.put(confirm_msg)
-                    send_to_namebroker('localhost',
-                                       {'__tag__': 'unregister',
-                                        '__name__': self.name})
+                    NameBrokerClient.send('localhost',
+                                          {'__tag__': 'unregister',
+                                           '__name__': self.name})
                     return
                 if __tag__ == '__ping__':
                     # answer special message without going to the receive,
@@ -210,10 +212,10 @@ class Receiver(object):
         if self.use_remote or os.name != 'posix':
             self.port = s.bind_to_random_port(
                 'tcp://*', min_port=MIN_PORT, max_port=MAX_PORT)
-            send_to_namebroker('localhost',
-                               {'__tag__': 'register',
-                                '__name__': self.name,
-                                '__port__': self.port})
+            NameBrokerClient.send('localhost',
+                                  {'__tag__': 'register',
+                                   '__name__': self.name,
+                                   '__port__': self.port})
         else:
             self.port = None
         return s
@@ -242,23 +244,10 @@ class Receiver(object):
         # self.close()
 
 
-def send_to_namebroker(at, msg, timeout=1000):
-    """Send message to NameBroker server at address ``at``."""
-    with zmq_socket(zmq.REQ) as s:
-        try:
-            s.set(zmq.RCVTIMEO, timeout)
-            s.connect('tcp://{}:{}'.format(at, NameBroker.PORT))
-            s.send_json(msg)
-            return s.recv_json()
-        except zmq.Again:
-            raise PipeException(
-                'cannot connect to NameBroker at {}:{}'
-                .format(at, NameBroker.PORT))
-
 def get_port_for(name, at):
     """Consult namebroker for the port associated to a name."""
-    resp = send_to_namebroker(at, {'__tag__': 'get',
-                                   '__name__': name})
+    resp = NameBrokerClient.send(at, {'__tag__': 'get',
+                                      '__name__': name})
     return resp['__port__']
 
         
@@ -503,20 +492,20 @@ class NameBrokerClient(object):
 
     def is_server_alive(self):
         try:
-            resp = send_to_namebroker(self.addr, {'__tag__': 'ping'})
+            resp = self.send(self.addr, {'__tag__': 'ping'})
             return resp['__pong__']
         except PipeException:
             return False
 
     def register(self, name, port):
-        send_to_namebroker(self.addr,
-                           {'__tag__': 'register',
-                            '__name__': name,
-                            '__port__': port})
+        self.send(self.addr,
+                  {'__tag__': 'register',
+                   '__name__': name,
+                   '__port__': port})
 
     def list(self):
-        names = send_to_namebroker(self.addr,
-                                   {'__tag__': 'list'})
+        names = self.send(self.addr,
+                          {'__tag__': 'list'})
         if names:
             col = max(map(len, names))
             for name in names:
@@ -525,3 +514,18 @@ class NameBrokerClient(object):
                              .format(name, names[name]))
         else:
             logger.debug('No registered names')
+
+    @staticmethod
+    def send(at, msg, timeout=1000):
+        """Send message to NameBroker server at address ``at``."""
+        with zmq_socket(zmq.REQ) as s:
+            try:
+                s.set(zmq.RCVTIMEO, timeout)
+                s.connect('tcp://{}:{}'.format(at, NameBroker.PORT))
+                s.send_json(msg)
+                return s.recv_json()
+            except zmq.Again:
+                raise PipeException(
+                    'cannot connect to NameBroker at {}:{}'
+                    .format(at, NameBroker.PORT))
+
