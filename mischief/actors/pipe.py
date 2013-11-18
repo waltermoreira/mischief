@@ -137,10 +137,12 @@ class Receiver(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+        self.reader_thread.join()
 
     def _reader(self, logger, socket):
         try:
             self._reader_loop(socket)
+            logger.debug('_reader_loop exited')
         finally:
             socket.close()
             
