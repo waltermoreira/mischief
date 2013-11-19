@@ -153,8 +153,8 @@ class Receiver(object):
         """
         queue = self.reader_queue
         while True:
-            data = socket.recv_json()
             try:
+                data = socket.recv_json()
                 __tag__ = data.get('__tag__')
                 if __tag__ == '__quit__':
                     # means to shutdown the thread
@@ -202,8 +202,7 @@ class Receiver(object):
                 logger.debug('Reader thread for {} got an exception:'
                              .format(self.path))
                 logger.debug(exc)
-                data = {'__tag__': '__exception__',
-                        'exception': exc}
+                return
             queue.put(data)
         
     def setup_reader(self):
