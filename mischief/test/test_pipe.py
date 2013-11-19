@@ -1,3 +1,5 @@
+import zmq
+
 from flexmock import flexmock
 import pytest
 import mischief.actors.pipe as p
@@ -68,3 +70,20 @@ def test_receiver_address(namebroker):
                    'reply_to': b.address()})
         assert tuple(b.get()['address']) == tuple(r.address())
 
+def test_receiver_low_level_ping(namebroker):
+    with p.Receiver('foo') as r, \
+         p.zmq_socket(zmq.PULL) as zr, \
+         p.zmq_socket(zmq.PUSH) as zs:
+        zr.bind('ipc://{}'.format(p.path_to('bar')))
+        zs.connect('ipc://{}'.format(p.path_to('foo')))
+        zs.send_json({'__tag__': '__low_level_ping__',
+                      'reply_to': 'ipc://{}'.format(p.path_to('bar'))})
+        assert zr.recv_json()['__tag__'] == '__pong__'
+        
+def test_receiver_other_data(namebroker):
+    with p.Receiver('foo') as r:
+        with p.Sender(r.address()) as s:
+            s.put({'__tag__': 'spam'})
+        assert r.get() == {'__tag__': 'spam'}
+        
+        
