@@ -103,6 +103,8 @@ class Receiver(object):
         
         self.path = path_to(name)
 
+        self.namebroker_client = NameBrokerClient(at=self.ip)
+        
         self.reader_queue = Queue()
         socket = self.setup_reader()
         self.reader_thread = threading.Thread(target=self._reader,
@@ -153,9 +155,7 @@ class Receiver(object):
                         with Sender(confirm_to) as sender:
                             confirm_msg = data.get('confirm_msg', None)
                             sender.put(confirm_msg)
-                    NameBrokerClient.send('localhost',
-                                          {'__tag__': 'unregister',
-                                           '__name__': self.name})
+                    self.namebroker_client.unregister(self.name)
                     return
                 if __tag__ == '__ping__':
                     # answer special message without going to the receive,
@@ -195,10 +195,7 @@ class Receiver(object):
         if self.use_remote or os.name != 'posix':
             self.port = s.bind_to_random_port(
                 'tcp://*', min_port=MIN_PORT, max_port=MAX_PORT)
-            NameBrokerClient.send('localhost',
-                                  {'__tag__': 'register',
-                                   '__name__': self.name,
-                                   '__port__': self.port})
+            self.namebroker_client.register(self.name, self.port)
         else:
             self.port = None
         return s
