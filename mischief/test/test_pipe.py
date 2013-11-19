@@ -3,6 +3,9 @@ import zmq
 from flexmock import flexmock
 import pytest
 import mischief.actors.pipe as p
+import mischief.actors.namebroker as n
+from mischief.exceptions import PipeEmpty
+from mischief.zmq_tools import zmq_socket
 
 def test_get_local_ip():
     locals = ['localhost', '127.0.0.1', '127.0.0.2']
@@ -26,7 +29,7 @@ def test_receiver_local():
     with p.Receiver('foo', use_remote=False) as r:
         assert r.address()[-1] is None
         assert r.qsize() == 0
-        with pytest.raises(p.PipeEmpty):
+        with pytest.raises(PipeEmpty):
             r.get(timeout=0)
 
 def test_receiver_remote(namebroker):
@@ -34,12 +37,12 @@ def test_receiver_remote(namebroker):
         port = r.address()[-1]
         assert isinstance(port, int) and port > 0
         assert r.qsize() == 0
-        with pytest.raises(p.PipeEmpty):
+        with pytest.raises(PipeEmpty):
             r.get(timeout=0)
 
 def test_receiver_register_unregister(namebroker):
     """Check that pipe register and unregister itself."""
-    flexmock(p.NameBrokerClient)
+    flexmock(n.NameBrokerClient)
     class Msg(object):
         def __init__(self, tag, name):
             self.tag = tag
@@ -49,9 +52,9 @@ def test_receiver_register_unregister(namebroker):
         def __repr__(self):
             return repr((self.tag, self.name))
 
-    p.NameBrokerClient.should_receive('send').with_args(
+    n.NameBrokerClient.should_receive('send').with_args(
         'localhost', Msg('register', 'foo')).once()
-    p.NameBrokerClient.should_receive('send').with_args(
+    n.NameBrokerClient.should_receive('send').with_args(
         'localhost', Msg('unregister', 'foo')).once()
     with p.Receiver('foo', use_remote=True) as r:
         pass
@@ -72,8 +75,8 @@ def test_receiver_address(namebroker):
 
 def test_receiver_low_level_ping(namebroker):
     with p.Receiver('foo') as r, \
-         p.zmq_socket(zmq.PULL) as zr, \
-         p.zmq_socket(zmq.PUSH) as zs:
+         zmq_socket(zmq.PULL) as zr, \
+         zmq_socket(zmq.PUSH) as zs:
         zr.bind('ipc://{}'.format(p.path_to('bar')))
         zs.connect('ipc://{}'.format(p.path_to('foo')))
         zs.send_json({'__tag__': '__low_level_ping__',
