@@ -138,6 +138,11 @@ class NameBrokerClient(object):
                    '__name__': name,
                    '__port__': port})
 
+    def unregister(self, name):
+        self.send(self.addr,
+                  {'__tag__': 'unregister',
+                   '__name__': name})
+
     def list(self):
         names = self.send(self.addr,
                           {'__tag__': 'list'})
