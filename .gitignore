@@ -1,3 +1,4 @@
 dist
 mischief.egg-info
 *.pyc
+*~
