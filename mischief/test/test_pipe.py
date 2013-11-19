@@ -59,4 +59,12 @@ def test_receiver_ping(namebroker):
         with p.Sender(r.address()) as s:
             s.put({'__tag__': '__ping__',
                    'reply_to': b.address()})
-        print(b.get())
+        assert b.get()['__tag__'] == '__pong__'
+
+def test_receiver_address(namebroker):
+    with p.Receiver('foo') as r, p.Receiver('bar') as b:
+        with p.Sender(r.address()) as s:
+            s.put({'__tag__': '__address__',
+                   'reply_to': b.address()})
+        assert tuple(b.get()['address']) == tuple(r.address())
+
