@@ -240,10 +240,6 @@ class Receiver(object):
     # synonym
     get = read
 
-    def __del__(self):
-        pass
-        # self.close()
-
 
 def get_port_for(name, at):
     """Consult namebroker for the port associated to a name."""
