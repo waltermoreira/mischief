@@ -180,7 +180,7 @@ class Receiver(object):
                     # since the actor may be doing something long lasting
                     # and not reading the queue
                     with Sender(data['reply_to']) as sender:
-                        sender.put({'tag': '__pong__'})
+                        sender.put({'__tag__': '__pong__'})
                     # avoid inserting this message in the queue
                     continue
                 if __tag__ == '__address__':
