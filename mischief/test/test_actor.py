@@ -5,7 +5,7 @@ import os
 import pytest
 
 from mischief.actors.actor import Actor, ActorRef, ThreadedActor
-from mischief.exceptions import ActorFinished
+from mischief.exceptions import ActorFinished, PipeException
 
 # add test for 'reply_to' actors and actorrefs
 
@@ -139,70 +139,36 @@ def test_many_msgs(namebroker):
     [x.close() for x in actors]
     collector.close()
 
-# # def test_reply(p):
-# #     class a(Actor):
-# #         def act(self):
-# #             result = []
-# #             self.receive(
-# #                 answer = lambda msg: result.append(msg['answer']))
-# #             return result[0]
+def test_non_existent_actor_ref():
+    with pytest.raises(PipeException):
+        with ActorRef('foobar') as ref:
+            pass
 
-# #     x = a('a')
-# #     qt = ActorRef('p')
-# #     qt.send({'tag': 'reply',
-# #              'reply_to': 'a'})
-# #     assert x.act() == 5
-# #     x.close()
-    
+def test_existent_actor_ref(threaded_actor):
+    with ActorRef(threaded_actor.address()) as ref:
+        alive = ref.is_alive()
+        assert alive
+    # y = ActorRef('p')
+    # alive = y.is_alive()
+    # assert alive
+    # x.close()
+    # y.close()
 
-# # def test_inbox(p):
-# #     class a(Actor):
-# #         def act(self):
-# #             result = []
-# #             self.receive({
-# #                 'answer': lambda msg: result.append(msg['answer'])})
-# #             return result[0]
-# #     x = a('a')
-# #     qt = ActorRef('p')
-# #     qt.send({'tag': 'foo'})
-# #     qt.send({'tag': 'bar'})
-# #     qt.send({'tag': 'queue',
-# #             'reply_to': 'a'})
-# #     assert x.act() == 2
-# #     x.close()
-
-# # def test_non_existent_actor_ref():
-# #     x = ActorRef('foobar')
-# #     not_alive = not x.is_alive()
-# #     assert not_alive
-# #     not_alive = not x.is_alive()
-# #     assert not_alive
-# #     x.close()
-
-# # def test_existent_actor_ref(t, p):
-# #     x = ActorRef('t')
-# #     alive = x.is_alive()
-# #     assert alive
-# #     y = ActorRef('p')
-# #     alive = y.is_alive()
-# #     assert alive
-# #     x.close()
-# #     y.close()
-
-# # def test_timeout_zero():
-# #     class a(Actor):
-# #         def act(self):
-# #             self.receive({
-# #                 'foo': self.read_value('data'),
-# #                 }, timeout=0)
-# #             return getattr(self, 'data', None)
-# #     x = a()
-# #     ActorRef(x.name).send({'tag': 'foo', 'data': 1})
-# #     while x.act() is None:
-# #         time.sleep(0.1)
-# #     y = x.act()
-# #     assert y == 1
-# #     x.close()
+def test_timeout_zero():
+    class A(Actor):
+        def act(self):
+            self.receive(
+                foo = self.read_value('data'),
+                timeout=0)
+            return getattr(self, 'data', None)
+    with A() as a, ActorRef(a.address()) as a_ref:
+        a_ref.foo(data=1)
+        while True:
+            result = a.act()
+            if result is not None:
+                assert result == 1
+                return
+            time.sleep(0.1)
 
 # # def test_timeout_zero_2():
 # #     class a(Actor):
