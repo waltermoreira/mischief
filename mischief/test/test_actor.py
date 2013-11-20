@@ -81,65 +81,63 @@ def test_timeout(namebroker):
         result = a.act()
         assert result[-1]
 
-# def test_new_api(namebroker):
-#     class A(Actor):
-#         def act(self):
-#             self.receive(
-#                 foo = self.foo)
-#             return self._msg
-#         def foo(self, msg):
-#             self._msg = msg
-#     with A() as a, ActorRef(a.address()) as a_ref:
-#         a_ref.foo(bar=3, baz='baz')
-#         msg = a.act()
-#         assert (msg['tag'] == 'foo' and
-#                 msg['bar'] == 3 and
-#                 msg['baz'] == 'baz')
+def test_new_api(namebroker):
+    class A(Actor):
+        def act(self):
+            self.receive(
+                foo = self.foo)
+            return self._msg
+        def foo(self, msg):
+            self._msg = msg
+    with A() as a, ActorRef(a.address()) as a_ref:
+        a_ref.foo(bar=3, baz='baz')
+        msg = a.act()
+        assert (msg['tag'] == 'foo' and
+                msg['bar'] == 3 and
+                msg['baz'] == 'baz')
 
-# def test_new_api_2(nb):
-#     class a(Actor):
-#         pass
-#     with a() as x, ActorRef(x.address()) as qx:
-#         with py.test.raises(TypeError):
-#             qx()
-#         qx.foo()
-#         with py.test.raises(TypeError):
-#             qx()
+def test_new_api_2(namebroker):
+    class A(Actor):
+        pass
+    with A() as a, ActorRef(a.address()) as a_ref:
+        with pytest.raises(TypeError):
+            a_ref()
+        a_ref.foo()
+        with pytest.raises(TypeError):
+            a_ref()
 
-# def test_many_msgs(nb):
-#     # Send many msgs to one actor, collect them and count them
-#     class a(ThreadedActor):
-#         def __init__(self):
-#             super(a, self).__init__()
-#             self.results = {}
-#         def act(self):
-#             try:
-#                 while True:
-#                     self.receive(add=self.add)
-#             except ActorFinished:
-#                 pass
-#         def add(self, msg):
-#             self.results[msg['i']] = 1
-#             if sorted(self.results.keys()) == range(100):
-#                 with ActorRef(msg['reply_to']) as sender:
-#                     sender.got_all()
-#     class b(Actor):
-#         def act(self):
-#             result = []
-#             self.receive(got_all=lambda msg: result.append(True),
-#                          timed_out=lambda msg: result.append(False),
-#                          timeout=2)
-#             return result
-#     # Create many instances to check the pipes are refreshed for each instance
-#     actors = [a() for i in range(4)]
-#     y = b()
-#     x_ref = ActorRef(actors[-1].address())
-#     for i in range(100):
-#         x_ref.add(i=i, reply_to=y)
-#     res = y.act()
-#     assert res == [True]
-#     [x.close() for x in actors]
-#     y.close()
+def test_many_msgs(namebroker):
+    # Send many msgs to one actor, collect them and count them
+    class A(ThreadedActor):
+        def act(self):
+            self.results = {}
+            try:
+                while True:
+                    self.receive(add=self.add)
+            except ActorFinished:
+                pass
+        def add(self, msg):
+            self.results[msg['i']] = 1
+            if list(sorted(self.results.keys())) == list(range(100)):
+                with ActorRef(msg['reply_to']) as sender:
+                    sender.got_all()
+    class B(Actor):
+        def act(self):
+            result = []
+            self.receive(got_all=lambda msg: result.append(True),
+                         timed_out=lambda msg: result.append(False),
+                         timeout=2)
+            return result
+    # Create many instances to check the pipes are refreshed for each instance
+    actors = [A() for i in range(4)]
+    collector = B()
+    x_ref = ActorRef(actors[-1].address())
+    for i in range(100):
+        x_ref.add(i=i, reply_to=collector)
+    result = collector.act()
+    assert result == [True]
+    [x.close() for x in actors]
+    collector.close()
 
 # # def test_reply(p):
 # #     class a(Actor):
