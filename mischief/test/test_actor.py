@@ -39,10 +39,24 @@ def answer_actor():
             self.receive(
                 answer = lambda msg: result.append(msg['value']))
             return result
+
     with _Actor() as actor:
         yield actor
 
+@pytest.yield_fixture(scope='function')
+def data_actor():
+    """Actor accepts message 'foo' with field 'data'"""
 
+    class _Actor(Actor):
+        def act(self):
+            self.receive(
+                foo = self.read_value('data'),
+                timeout=0)
+            return getattr(self, 'data', None)
+    with _Actor() as actor:
+        yield actor
+
+        
 def test_reply(namebroker, threaded_actor, answer_actor):
     with ActorRef(threaded_actor.address()) as t:
         t.reply5(reply_to=answer_actor)
@@ -154,58 +168,35 @@ def test_existent_actor_ref(threaded_actor):
     # x.close()
     # y.close()
 
-def test_timeout_zero():
-    class A(Actor):
-        def act(self):
-            self.receive(
-                foo = self.read_value('data'),
-                timeout=0)
-            return getattr(self, 'data', None)
-    with A() as a, ActorRef(a.address()) as a_ref:
+def test_timeout_zero(data_actor):
+    with ActorRef(data_actor.address()) as a_ref:
         a_ref.foo(data=1)
         while True:
-            result = a.act()
+            result = data_actor.act()
             if result is not None:
                 assert result == 1
                 return
             time.sleep(0.1)
 
-# # def test_timeout_zero_2():
-# #     class a(Actor):
-# #         def act(self):
-# #             self.receive({
-# #                 'foo': self.read_value('data'),
-# #                 }, timeout=0)
-# #             return getattr(self, 'data', None)
-# #     x = a()
-# #     y = ActorRef(x.name)
-# #     y.send({'tag': 'bar'})
-# #     y.send({'tag': 'baz'})
-# #     y.send({'tag': 'foo', 'data': 1})
-# #     y.send({'tag': 'gii'})
-# #     while x.inbox.qsize() < 4:
-# #         time.sleep(0.1)
-# #     z = x.act()
-# #     assert z == 1
-# #     x.close()
+def test_timeout_zero_2(data_actor):
+    with ActorRef(data_actor.address()) as a_ref:
+        a_ref.bar()
+        a_ref.baz()
+        a_ref.foo(data=1)
+        a_ref.gii()
+        while data_actor.inbox.qsize() < 4:
+            time.sleep(0.1)
+        result = data_actor.act()
+        assert result == 1
         
-# # def test_timeout_zero_no_match():
-# #     class a(Actor):
-# #         def act(self):
-# #             self.receive({
-# #                 'foo': self.read_value('data')
-# #                 }, timeout=0)
-# #             return getattr(self, 'data', None)
-# #     x = a()
-# #     ActorRef(x.name).send({'tag': 'bar', 'data': 2})
-# #     while x.inbox.qsize() != 1:
-# #         time.sleep(0.1)
-# #     y = x.act()
-# #     y = x.act()
-# #     y = x.act()
-# #     y = x.act()
-# #     assert y == None
-# #     x.close()
+def test_timeout_zero_no_match(data_actor):
+    with ActorRef(data_actor.address()) as a_ref:
+        a_ref.bar(data=2)
+        while data_actor.inbox.qsize() != 1:
+            time.sleep(0.1)
+        for _ in range(4):
+            result = data_actor.act()
+            assert result is None
 
 # # def test_timeout_eating_msgs():
 # #     result = [True]
