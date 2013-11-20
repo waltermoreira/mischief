@@ -30,7 +30,7 @@ import inspect
 
 from .pipe import Receiver, Sender, is_local_ip, get_local_ip
 from ..log import setup
-from ..exceptions import ActorFinished
+from ..exceptions import ActorFinished, PipeEmpty
 
 logger = setup(to=['file', 'console'])
 
@@ -217,7 +217,7 @@ class Actor(object):
                 if msg is None:
                     raise ActorFinished()
                 checked_objects += 1
-            except queue.Empty:
+            except PipeEmpty:
                 continue
             try:
                 if msg['tag'] == '_debug':
