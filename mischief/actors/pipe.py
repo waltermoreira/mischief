@@ -87,12 +87,12 @@ class Receiver(object):
     of the data, and it can be used to check the reader loop is
     running.  The message has the form::
 
-        {'__tag__': '__ping__',
+        {'tag': '__ping__',
          'reply_to': sender_address}
 
     If the reader loop is running, it will respond with the message
 
-        {'__tag__': '__pong__'}
+        {'tag': '__pong__'}
 
     Receiver requires the dependencies: NameBrokerClient and Sender.
     """
