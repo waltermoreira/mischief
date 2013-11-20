@@ -139,7 +139,7 @@ class Receiver(object):
         while True:
             try:
                 data = socket.recv_json()
-                __tag__ = data.get('__tag__')
+                __tag__ = data.get('tag')
                 if __tag__ == '__quit__':
                     # means to shutdown the thread
                     # Close the socket just so the confirmation message
@@ -162,7 +162,7 @@ class Receiver(object):
                     # since the actor may be doing something long lasting
                     # and not reading the queue
                     with Sender(data['reply_to']) as sender:
-                        sender.put({'__tag__': '__pong__'})
+                        sender.put({'tag': '__pong__'})
                     # avoid inserting this message in the queue
                     continue
                 if __tag__ == '__address__':
@@ -177,7 +177,7 @@ class Receiver(object):
                     sender = data['reply_to']
                     with zmq_socket(zmq.PUSH) as s:
                         s.connect(sender)
-                        s.send_json({'__tag__': '__pong__'})
+                        s.send_json({'tag': '__pong__'})
                     continue
             except Exception:
                 exc = traceback.format_exc()
@@ -310,12 +310,12 @@ class Sender(object):
         with zmq_socket(zmq.PULL) as r:
             address = self._temp_receiver(r)
             logger.debug('reply_to = {}'.format(address))
-            self.socket.send_json({'__tag__': '__low_level_ping__',
+            self.socket.send_json({'tag': '__low_level_ping__',
                                    'reply_to': address})
             try:
                 r.set(zmq.RCVTIMEO, 1000)
                 resp = r.recv_json()
-                return resp['__tag__'] == '__pong__'
+                return resp['tag'] == '__pong__'
             except zmq.Again:
                 return False
             
@@ -334,7 +334,7 @@ class Sender(object):
         self.socket.close()
 
     def close_receiver(self, confirm_to=None, confirm_msg=None):
-        self.put({'__tag__': '__quit__',
+        self.put({'tag': '__quit__',
                   'confirm_to': confirm_to,
                   'confirm_msg': confirm_msg})
         

@@ -62,14 +62,14 @@ def test_receiver_register_unregister(namebroker):
 def test_receiver_ping(namebroker):
     with p.Receiver('foo') as r, p.Receiver('bar') as b:
         with p.Sender(r.address()) as s:
-            s.put({'__tag__': '__ping__',
+            s.put({'tag': '__ping__',
                    'reply_to': b.address()})
-        assert b.get()['__tag__'] == '__pong__'
+        assert b.get()['tag'] == '__pong__'
 
 def test_receiver_address(namebroker):
     with p.Receiver('foo') as r, p.Receiver('bar') as b:
         with p.Sender(r.address()) as s:
-            s.put({'__tag__': '__address__',
+            s.put({'tag': '__address__',
                    'reply_to': b.address()})
         assert tuple(b.get()['address']) == tuple(r.address())
 
@@ -79,14 +79,14 @@ def test_receiver_low_level_ping(namebroker):
          zmq_socket(zmq.PUSH) as zs:
         zr.bind('ipc://{}'.format(p.path_to('bar')))
         zs.connect('ipc://{}'.format(p.path_to('foo')))
-        zs.send_json({'__tag__': '__low_level_ping__',
+        zs.send_json({'tag': '__low_level_ping__',
                       'reply_to': 'ipc://{}'.format(p.path_to('bar'))})
-        assert zr.recv_json()['__tag__'] == '__pong__'
+        assert zr.recv_json()['tag'] == '__pong__'
         
 def test_receiver_other_data(namebroker):
     with p.Receiver('foo') as r:
         with p.Sender(r.address()) as s:
-            s.put({'__tag__': 'spam'})
-        assert r.get() == {'__tag__': 'spam'}
+            s.put({'tag': 'spam'})
+        assert r.get() == {'tag': 'spam'}
         
         
