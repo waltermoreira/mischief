@@ -1,5 +1,3 @@
-from itertools import zip_longest
-from queue import Queue, Empty
 import time
 import struct
 import uuid
@@ -8,12 +6,14 @@ import errno
 import os
 import threading
 import traceback
-import zmq
 import socket
 import inspect
+from itertools import zip_longest
+from queue import Queue, Empty
 from collections import defaultdict
 from contextlib import contextmanager
 
+import zmq
 from .namebroker import NameBrokerClient
 from ..log import setup
 from ..zmq_tools import zmq_socket, Context
