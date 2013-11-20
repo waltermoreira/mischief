@@ -18,10 +18,14 @@ def threaded_actor():
             with ActorRef(msg['reply_to']) as sender:
                 sender.answer(value=5)
         def act(self):
-            while True:
-                self.receive(
-                    reply5 = self.reply5
-                )
+            try:
+                while True:
+                    self.receive(
+                        reply5 = self.reply5,
+                    )
+            except ActorFinished:
+                pass
+                
     with _Actor() as actor:
         yield actor
         
