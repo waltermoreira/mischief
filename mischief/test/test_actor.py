@@ -11,6 +11,8 @@ from mischief.exceptions import ActorFinished
 
 @pytest.yield_fixture(scope='module')
 def threaded_actor():
+    """A threaded actor"""
+    
     class _Actor(ThreadedActor):
         def reply5(self, msg):
             with ActorRef(msg['reply_to']) as sender:
@@ -23,21 +25,28 @@ def threaded_actor():
     with _Actor() as actor:
         yield actor
         
+@pytest.yield_fixture(scope='module')
+def answer_actor():
+    """Listen for 'answer' and return 'value'"""
     
-def test_reply(namebroker, threaded_actor):
-    class A(Actor):
+    class _Actor(Actor):
         def act(self):
             result = []
             self.receive(
                 answer = lambda msg: result.append(msg['value']))
             return result
-    with A() as a, ActorRef(threaded_actor.address()) as t:
-        t.reply5(reply_to=a)
-        result = a.act()
+    with _Actor() as actor:
+        yield actor
+
+
+def test_reply(namebroker, threaded_actor, answer_actor):
+    with ActorRef(threaded_actor.address()) as t:
+        t.reply5(reply_to=answer_actor)
+        result = answer_actor.act()
         assert result == [5]
 
-# def test_inbox(nb, t):
-#     class a(Actor):
+# def test_inbox(namebroker, threaded_actor):
+#     class A(Actor):
 #         def act(self):
 #             result = []
 #             self.receive(
