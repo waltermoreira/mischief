@@ -45,58 +45,51 @@ def test_reply(namebroker, threaded_actor, answer_actor):
         result = answer_actor.act()
         assert result == [5]
 
-# def test_inbox(namebroker, threaded_actor):
+def test_inbox(namebroker, threaded_actor, answer_actor):
+    with ActorRef(threaded_actor.address()) as t:
+        t.foo()
+        t.bar()
+        t.reply5(reply_to=answer_actor)
+        result = answer_actor.act()
+        assert result == [5]
+
+def test_wildcard(namebroker):
+    class A(Actor):
+        def act(self):
+            result = []
+            self.receive(
+                _ = lambda msg: result.append(msg['tag']))
+            return result
+    with A() as a, ActorRef(a.address()) as a_ref:
+        a_ref.foo()
+        result = a.act()
+        assert result == ['foo']
+
+def test_timeout(namebroker):
+    class A(Actor):
+        def act(self):
+            result = [False]
+            self.receive(
+                timed_out = lambda msg: result.append(True),
+                timeout = 0.1)
+            return result
+    with A() as a:
+        result = a.act()
+        assert result[-1]
+
+# def test_new_api(namebroker):
 #     class A(Actor):
-#         def act(self):
-#             result = []
-#             self.receive(
-#                 answer = lambda msg: result.append(msg['answer']))
-#             return result[0]
-#     with a() as x, ActorRef(t.address()) as qt:
-#         qt.foo()
-#         qt.bar()
-#         qt.reply2(reply_to=x)
-#         u = x.act()
-#         assert u == 2
-
-# def test_wildcard(nb):
-#     class a(Actor):
-#         def act(self):
-#             result = []
-#             self.receive(
-#                 _ = lambda msg: result.append(msg['tag']))
-#             return result
-#     with a() as x, ActorRef(x.address()) as qa:
-#         qa.foo()
-#         u = x.act()
-#         assert u == ['foo']
-
-# def test_timeout(nb):
-#     class a(Actor):
-#         def act(self):
-#             result = [False]
-#             self.receive(
-#                 timed_out = lambda msg: result.append(True),
-#                 timeout = 0.1)
-#             return result
-#     with a() as x:
-#         u = x.act()
-#         assert u[-1]
-
-
-# def test_new_api(nb):
-#     class a(Actor):
 #         def act(self):
 #             self.receive(
 #                 foo = self.foo)
 #             return self._msg
 #         def foo(self, msg):
 #             self._msg = msg
-#     with a() as x, ActorRef(x.address()) as qx:
-#         qx.foo(bar=5, baz='baz')
-#         msg = x.act()
+#     with A() as a, ActorRef(a.address()) as a_ref:
+#         a_ref.foo(bar=3, baz='baz')
+#         msg = a.act()
 #         assert (msg['tag'] == 'foo' and
-#                 msg['bar'] == 5 and
+#                 msg['bar'] == 3 and
 #                 msg['baz'] == 'baz')
 
 # def test_new_api_2(nb):
