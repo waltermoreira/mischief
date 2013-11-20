@@ -5,3 +5,6 @@ class PipeException(Exception):
 class PipeEmpty(PipeException):
     pass
     
+class ActorFinished(Exception):
+    pass
+    
