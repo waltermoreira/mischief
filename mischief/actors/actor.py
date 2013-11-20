@@ -20,33 +20,27 @@ implements the method ``act()``::
 """
 
 import pprint
-import multiprocessing as m
 import threading
-import logging
-import logging.handlers
-import Queue
+import queue
 import sys
 import os
-import signal
 import time
 import uuid
-import socket
 import inspect
-from pipe import Receiver, Sender, is_local_ip, get_local_ip
-from .. import log
 
-logger = log.setup(to=['file', 'console'])
+from .pipe import Receiver, Sender, is_local_ip, get_local_ip
+from ..log import setup
+from ..exceptions import ActorFinished
 
-class ActorFinished(Exception):
-    pass
-    
+logger = setup(to=['file', 'console'])
+
 class ActorRef(object):
     """
     An actor reference.
     """
     
     def __init__(self, address):
-        self._address = (address if not isinstance(address, basestring)
+        self._address = (address if not isinstance(address, str)
                          else (address, 'localhost', None))
         self.name, self.ip, self.port = self._address
         self.sender = Sender(self._address)
@@ -70,14 +64,14 @@ class ActorRef(object):
         Send a ping to the associated actor and wait for a pong
         """
         with _ListenerActor() as listener:
-            self.send({'__tag__': '__ping__',
+            self.send({'tag': '__ping__',
                        'reply_to': listener})
             listener.wait_pong(timeout=0.5)
             return listener.pong
 
     def full_address(self):
         with _ReplyWaiter() as waiter:
-            self.send({'__tag__': '__address__',
+            self.send({'tag': '__address__',
                        'reply_to': waiter})
             resp = waiter.act()
             return resp['address'], resp['pid']
@@ -204,7 +198,7 @@ class Actor(object):
         patterns.update(more_patterns)
         
         inbox_polling = timeout and self.INBOX_POLLING_TIMEOUT
-        processed = Queue.Queue()
+        processed = queue.Queue()
         start_time = current_time = time.time()
         msg = {}
         starting_size = self.inbox.qsize()
@@ -223,7 +217,7 @@ class Actor(object):
                 if msg is None:
                     raise ActorFinished()
                 checked_objects += 1
-            except Queue.Empty:
+            except queue.Empty:
                 continue
             try:
                 if msg['tag'] == '_debug':
@@ -310,7 +304,7 @@ class Echo(ThreadedActor):
                 _ = self.echo)
 
     def echo(self, msg):
-        print '[Echo]'
+        print('[Echo]')
         pprint.pprint(msg, width=1)
 
 class _ListenerActor(Actor):
