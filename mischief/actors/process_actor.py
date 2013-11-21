@@ -25,15 +25,16 @@ Keyword arguments are set in the actor in the new process.
 
 import sys
 import os
+import importlib
+import subprocess
 
 # Add mischief package to sys.path, so the python subprocess can find
 # this same file
 sys.path.append(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../'))
 
-from mischief.actors.actor import Actor, ActorRef, ActorFinished
-import importlib
-import subprocess
+from mischief.actors.actor import Actor, ActorRef
+from mischief.exceptions import ActorFinished, SpawnTimeoutError
 
 class ProcessActor(Actor):
 
