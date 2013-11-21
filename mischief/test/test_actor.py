@@ -198,24 +198,23 @@ def test_timeout_zero_no_match(data_actor):
             result = data_actor.act()
             assert result is None
 
-# # def test_timeout_eating_msgs():
-# #     result = [True]
-# #     class a(Actor):
-# #         def act(self):
-# #             self.receive({}, timeout=0.1)
-# #         def act2(self):
-# #             self.receive(
-# #                 bar = lambda msg: None,
-# #                 timed_out = lambda msg: result.append(False),
-# #                 timeout = 0.1)
-# #     x = a()
-# #     ActorRef(x.name).send({'tag': 'bar'})
-# #     while x.inbox.qsize() != 1:
-# #         time.sleep(0.1)
-# #     x.act()
-# #     x.act2()
-# #     assert result[-1]
-# #     x.close()
+def test_timeout_eating_msgs():
+    result = [True]
+    class A(Actor):
+        def act(self):
+            self.receive(timeout=0.1)
+        def act2(self):
+            self.receive(
+                bar = lambda msg: None,
+                timed_out = lambda msg: result.append(False),
+                timeout = 0.1)
+    with A() as a, ActorRef(a.address()) as a_ref:
+        a_ref.bar()
+        while a.inbox.qsize() != 1:
+            time.sleep(0.1)
+        a.act()
+        a.act2()
+        assert result[-1]
 
 # # def test_process_actor_returns_name(q):
 # #     p, _ = spawn(q, 'foo')
@@ -237,20 +236,19 @@ def test_timeout_zero_no_match(data_actor):
 # #     ref.close_actor()
 # #     x.close()
 
-# # def test_close_with_confirmation(t):
-# #     class a(Actor):
-# #         def act(self):
-# #             self.receive(_ = self.read_value('tag'))
-# #             return self.tag
-# #     x = a()
-# #     with ActorRef('t') as tr:
-# #         alive = tr.is_alive()
-# #         assert alive
-# #         tr.close_actor(confirm_to=x.name)
-# #         u = x.act()
-# #         assert u == 'closed'
-# #     x.close()
-
+def test_close_with_confirmation(threaded_actor):
+    class A(Actor):
+        def act(self):
+            self.receive(_ = self.read_value('tag'))
+            return self.tag
+    with A() as a, ActorRef(threaded_actor.address()) as t_ref:
+        alive = t_ref.is_alive()
+        assert alive
+        t_ref.close_actor(confirm_to=a.address())
+        result = a.act()
+        assert result == 'closed'
+        assert not t_ref.is_alive()
+        
 # # def test_ping():
 # #     class a(ThreadedActor):
 # #         def act(self):
