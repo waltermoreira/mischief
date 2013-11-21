@@ -157,8 +157,8 @@ class PEcho(ProcessActor):
         )
 
     def do_pecho(self, msg):
-        print 'Process Echo:'
-        print msg
+        print('Process Echo:')
+        print(msg)
 
     
 if __name__ == '__main__':
