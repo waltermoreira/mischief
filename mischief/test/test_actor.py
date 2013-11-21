@@ -241,7 +241,10 @@ def test_close_with_confirmation(threaded_actor):
         def act(self):
             self.receive(_ = self.read_value('tag'))
             return self.tag
-    with A() as a, ActorRef(threaded_actor.address()) as t_ref:
+    class T(ThreadedActor):
+        def act(self):
+            self.receive()
+    with A() as a, T() as t, ActorRef(t.address()) as t_ref:
         alive = t_ref.is_alive()
         assert alive
         t_ref.close_actor(confirm_to=a.address())
@@ -249,21 +252,11 @@ def test_close_with_confirmation(threaded_actor):
         assert result == 'closed'
         assert not t_ref.is_alive()
         
-# # def test_ping():
-# #     class a(ThreadedActor):
-# #         def act(self):
-# #             try:
-# #                 self.receive(foo=lambda msg: None)
-# #             except ActorFinished:
-# #                 pass
-# #     x = a()
-# #     xr = ActorRef(x.name)
-# #     alive = xr.is_alive()
-# #     assert alive
-# #     time.sleep(0.5)
-# #     alive = xr.is_alive()
-# #     assert alive
-# #     x.close()
+def test_ping(threaded_actor):
+    with ActorRef(threaded_actor.address()) as t_ref:
+        assert t_ref.is_alive()
+        time.sleep(0.5)
+        assert t_ref.is_alive()
 
 # # def test_none_method():
 # #     class a(Actor):
