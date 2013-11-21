@@ -258,61 +258,52 @@ def test_ping(threaded_actor):
         time.sleep(0.5)
         assert t_ref.is_alive()
 
-# # def test_none_method():
-# #     class a(Actor):
-# #         def act(self):
-# #             self.receive(foo=None)
-# #             return True
-# #     x = a()
-# #     xr = ActorRef(x.name)
-# #     xr.foo()
-# #     y = x.act()
-# #     assert y
-# #     x.close()
+def test_none_method():
+    class A(Actor):
+        def act(self):
+            self.receive(foo=None)
+            return True
+    with A() as a, ActorRef(a.address()) as a_ref:
+        a_ref.foo()
+        result = a.act()
+        assert result
 
-# # def test_close_actor_and_ref():
-# #     class Wait(Actor):
-# #         def act(self):
-# #             self.receive(_=None)
-# #     class a(ThreadedActor):
-# #         def act(self):
-# #             self.receive()
-# #     x = a()
-# #     wait = Wait()
-# #     xr = ActorRef(x.name)
-# #     alive = xr.is_alive()
-# #     assert alive
-# #     xr.close_actor(confirm_to=wait.name)
-# #     wait.act()
-# #     not_alive = not xr.is_alive()
-# #     assert not_alive
-# #     x.close()
-# #     wait.close()
+def test_close_actor_and_ref():
+    class Wait(Actor):
+        def act(self):
+            self.receive(_=None)
+    class T(ThreadedActor):
+        def act(self):
+            self.receive()
+    with T() as t, Wait() as w, ActorRef(t.address()) as t_ref:
+        alive = t_ref.is_alive()
+        assert alive
+        t_ref.close_actor(confirm_to=w.address())
+        w.act()
+        not_alive = not t_ref.is_alive()
+        assert not_alive
 
-# # def test_sync_call(t):
-# #     class a(ThreadedActor):
-# #         def act(self):
-# #             self.receive(sync_test=self.sync_test)
-# #         def sync_test(self, msg):
-# #             with ActorRef(msg['reply_to']) as sender:
-# #                 sender.reply(got=msg)
-# #     x = a()
-# #     with ActorRef(x.name) as tr:
-# #         assert tr.is_alive()
-# #         answer = tr.sync('sync_test', x=5)
-# #         assert answer['got']['tag'] == 'sync_test'
-# #         assert answer['got']['x'] == 5
-# #     x.close()
+def test_sync_call():
+    class T(ThreadedActor):
+        def act(self):
+            self.receive(sync_test=self.sync_test)
+        def sync_test(self, msg):
+            with ActorRef(msg['reply_to']) as sender:
+                sender.reply(got=msg)
+    with T() as t, ActorRef(t.address()) as t_ref:
+        assert t_ref.is_alive()
+        answer = t_ref.sync('sync_test', x=5)
+        assert answer['got']['tag'] == 'sync_test'
+        assert answer['got']['x'] == 5
 
-# # def test_alive_not_acting():
-# #     class a(Actor):
-# #         def act(self):
-# #             self.receive(_=self.read_value('tag'))
-# #             return self.tag
-# #     x = a()
-# #     xr = ActorRef(x.name)
-# #     alive = xr.is_alive()
-# #     assert alive
-# #     xr.foo()
-# #     u = x.act()
-# #     assert u == 'foo'
+def test_alive_not_acting():
+    class A(Actor):
+        def act(self):
+            self.receive(_=self.read_value('tag'))
+            return self.tag
+    with A() as a, ActorRef(a.address()) as a_ref:
+        alive = a_ref.is_alive()
+        assert alive
+        a_ref.foo()
+        result = a.act()
+        assert result == 'foo'
