@@ -61,21 +61,13 @@ class ProcessActor(Actor):
         with ActorRef(msg['reply_to']) as sender:
             sender.finished_init()
             
-    def act(self):
-        """
-        If not overloaded, provide a basic act loop that can be
-        customized through 'process_act'.
-        """
+    def _act(self):
         self.receive(init=self.remote_init)
         try:
-            while True:
-                self.process_act()
+            self.act()
         except (StopIteration, ActorFinished):
             return
 
-    def process_act(self):
-        raise NotImplementedError
-        
 class WaitActor(Actor):
     """
     Actor to wait for a message from the client's class saying that
@@ -116,15 +108,12 @@ def start_actor(name, module):
         p = subprocess.Popen(['python', myself, w_name, name, module])
         return w.act()
 
-class SpawnTimeoutError(Exception):
-    pass
-    
-def spawn(actor, name=None, **kwargs):
+def spawn(actor, name=None, ip='localhost', **kwargs):
     """
     Utility function to start a process actor and initialize it
     """
     if name is not None:
-        with ActorRef((name, 'localhost', None)) as ref:
+        with ActorRef((name, ip, None)) as ref:
             # Do not start if it's already alive
             if ref.is_alive():
                 return ref.full_address()
@@ -151,10 +140,11 @@ class PEcho(ProcessActor):
     def __init__(self):
         super(PEcho, self).__init__()
 
-    def process_act(self):
-        self.receive(
-            _ = self.do_pecho
-        )
+    def act(self):
+        while True:
+            self.receive(
+                _ = self.do_pecho
+            )
 
     def do_pecho(self, msg):
         print('Process Echo:')
@@ -177,7 +167,7 @@ if __name__ == '__main__':
     # The new process ends when the client's actor finishes its
     # ``act`` method.
     try:
-        actor.act()
+        actor._act()
     except KeyboardInterrupt:
         pass
     
