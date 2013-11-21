@@ -30,7 +30,7 @@ import inspect
 
 from .pipe import Receiver, Sender, is_local_ip, get_local_ip
 from ..log import setup
-from ..exceptions import ActorFinished, PipeEmpty
+from ..exceptions import ActorFinished, PipeEmpty, PipeException
 
 logger = setup(to=['file', 'console'])
 
@@ -167,9 +167,14 @@ class Actor(object):
         """
         Actor context closes it on exit
         """
-        with ActorRef(self.address()) as myself:
-            myself.close_actor()
-    
+        try:
+            with ActorRef(self.address()) as myself:
+                myself.close_actor()
+        except PipeException:
+            # If actor was already closed, ignore error from the
+            # reference trying to ping the actor
+            pass
+            
     def close(self, confirm_to=None):
         confirm_msg = {'tag': 'closed'}
         self.inbox.close(confirm_to, confirm_msg)
