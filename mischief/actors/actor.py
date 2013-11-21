@@ -293,6 +293,11 @@ class ThreadedActor(Actor):
         self.thread.daemon = True
         self.thread.start()
 
+    @staticmethod
+    def spawn(actor, name=None, ip='localhost', **kwargs):
+        """Convenience function for symmetry with process actors."""
+        return actor(name, ip, **kwargs)
+    
 class Echo(ThreadedActor):
     """
     Convenience actor to display responses from other actors.

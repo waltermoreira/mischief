@@ -307,3 +307,40 @@ def test_alive_not_acting():
         a_ref.foo()
         result = a.act()
         assert result == 'foo'
+
+def test_threaded_spawn():
+    class T(ThreadedActor):
+        def act(self):
+            self.Receive()
+    with ThreadedActor.spawn(T) as t, ActorRef(t.address()) as t_ref:
+        assert t_ref.is_alive()
+
+def test_threaded_spawn_with_args():
+    class T(ThreadedActor):
+        def __init__(self, name=None, ip='localhost', x=0, k=None):
+            super().__init__(name, ip)
+            self.x = x
+            self.k = k
+        def act(self):
+            self.receive(
+                args = self.args
+            )
+        def args(self, msg):
+            with ActorRef(msg['reply_to']) as sender:
+                sender.reply(x=self.x, k=self.k)
+    class A(Actor):
+        def act(self):
+            self.receive(
+                reply = self.reply
+            )
+            return self.x, self.k
+        def reply(self, msg):
+            self.x = msg['x']
+            self.k = msg['k']
+    with ThreadedActor.spawn(T, x=5, k='a') as t, ActorRef(t.address()) as t_ref, A() as a:
+        assert t_ref.is_alive()
+        t_ref.args(reply_to=a.address())
+        result = a.act()
+        assert result == (5, 'a')
+
+        
