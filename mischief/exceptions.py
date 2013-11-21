@@ -8,3 +8,6 @@ class PipeEmpty(PipeException):
 class ActorFinished(Exception):
     pass
     
+class SpawnTimeoutError(Exception):
+    pass
+    
