@@ -6,8 +6,7 @@ import pytest
 
 from mischief.actors.actor import Actor, ActorRef, ThreadedActor
 from mischief.exceptions import ActorFinished, PipeException
-
-# add test for 'reply_to' actors and actorrefs
+from mischief.actors.process_actor import ProcessActor
 
 @pytest.yield_fixture(scope='module')
 def threaded_actor():
@@ -56,6 +55,23 @@ def data_actor():
     with _Actor() as actor:
         yield actor
 
+class EchoProcessActor(ProcessActor):
+    def act(self):
+        while True:
+            self.receive(
+                echo = self.echo
+            )
+    def echo(self, msg):
+        with ActorRef(msg['reply_to']) as sender:
+            del msg['tag']
+            sender.reply(**msg)
+        
+@pytest.yield_fixture(scope='module')
+def process_actor():
+    """A process actor"""
+
+    with ProcessActor.spawn(EchoProcessActor) as proxy:
+        yield proxy
         
 def test_reply(namebroker, threaded_actor, answer_actor):
     with ActorRef(threaded_actor.address()) as t:
@@ -311,7 +327,7 @@ def test_alive_not_acting():
 def test_threaded_spawn():
     class T(ThreadedActor):
         def act(self):
-            self.Receive()
+            self.receive()
     with ThreadedActor.spawn(T) as t, ActorRef(t.address()) as t_ref:
         assert t_ref.is_alive()
 
@@ -343,4 +359,24 @@ def test_threaded_spawn_with_args():
         result = a.act()
         assert result == (5, 'a')
 
-        
+def test_process_spawn(process_actor):
+    with ActorRef(process_actor.address()) as p_ref:
+        assert p_ref.is_alive()
+        result = p_ref.sync('echo', x=4)
+        assert result['x'] == 4
+
+def test_process_close():
+    with ProcessActor.spawn(EchoProcessActor) as p, ActorRef(p.address()) as p_ref:
+        assert p_ref.is_alive()
+        p_ref.close_actor()
+        assert not p_ref.is_alive()
+        for _ in range(200):
+            try:
+                if os.waitpid(p.pid, os.WNOHANG) == (0, 0):
+                    break
+            except ChildProcessError:
+                break
+            time.sleep(0.01)
+        else:
+            assert False
+            
