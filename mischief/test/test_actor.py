@@ -402,4 +402,13 @@ def test_ref_with_ref(threaded_actor):
         with ActorRef(t_ref) as x_ref:
             assert t_ref.address() == x_ref.address()
     
-    
+def test_attribute_access():
+    class A(ThreadedActor):
+        def act(self):
+            self.receive(echo=self.echo)
+        def echo(self, msg):
+            with ActorRef(msg.reply_to) as sender:
+                sender.reply(x=4)
+    with ThreadedActor.spawn(A) as a, ActorRef(a) as a_ref:
+        result = a_ref.sync('echo')
+        assert result['x'] == 4

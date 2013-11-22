@@ -267,7 +267,7 @@ class Actor(object):
         elif action is None:
             # None is a shortcut for an empty handler
             f = lambda msg: None
-        f(msg)
+        f(AttributeDict(msg))
 
     def _debug(self, msg, patterns):
         """Special method to respond to a _debug message.
@@ -285,7 +285,16 @@ class Actor(object):
         Subclasses must implement this method.
         """
         raise NotImplementedError
-        
+
+class AttributeDict(dict):
+    """A dict that can access keys via attributes"""
+
+    def __getattr__(self, attr):
+        return self[attr]
+
+    def __setattr__(self, attr, val):
+        self[attr] = val    
+
 class ThreadedActor(Actor):
     """
     A threaded version of an actor.  It runs as a daemon thread.
