@@ -10,7 +10,7 @@ class Register(ProcessActor):
     """
     
     def __init__(self):
-        super(Register, self).__init__('Register')
+        super().__init__('Register')
         self.processes = {}
 
     def act(self):
