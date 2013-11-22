@@ -36,6 +36,32 @@ sys.path.append(
 from mischief.actors.actor import Actor, ActorRef
 from mischief.exceptions import ActorFinished, SpawnTimeoutError
 
+class ProcessActorProxy(object):
+    """A proxy to work as a context manager for the process actors."""
+
+    def __init__(self, address, pid):
+        self._address = address
+        self.pid = pid
+
+    def address(self):
+        return self._address
+        
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Actor context closes it on exit
+        """
+        try:
+            with ActorRef(self.address()) as myself:
+                myself.close_actor()
+        except PipeException:
+            # If actor was already closed, ignore error from the
+            # reference trying to ping the actor
+            pass
+
+    
 class ProcessActor(Actor):
 
     # When creating an instance, the first time launch a new Python
