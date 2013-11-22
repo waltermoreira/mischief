@@ -44,4 +44,8 @@ def no_stderr():
     finally:
         sys.stderr = old_stderr
 
-        
+class Addressable(object):
+    """Interface for addressable objects."""
+
+    def address(self):
+        raise NotImplementedError

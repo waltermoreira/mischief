@@ -412,3 +412,7 @@ def test_attribute_access():
     with ThreadedActor.spawn(A) as a, ActorRef(a) as a_ref:
         result = a_ref.sync('echo')
         assert result['x'] == 4
+
+def test_ref_with_proxy(process_actor):
+    with ActorRef(process_actor) as ref:
+        assert ref.is_alive()

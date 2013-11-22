@@ -36,8 +36,9 @@ sys.path.insert(
 
 from mischief.actors.actor import Actor, ActorRef
 from mischief.exceptions import ActorFinished, SpawnTimeoutError, PipeException
+from mischief.tools import Addressable
 
-class ProcessActorProxy(object):
+class ProcessActorProxy(Addressable):
     """A proxy to work as a context manager for the process actors."""
 
     def __init__(self, address, pid):

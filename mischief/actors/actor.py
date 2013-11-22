@@ -31,16 +31,17 @@ import inspect
 from .pipe import Receiver, Sender, is_local_ip, get_local_ip
 from ..log import setup
 from ..exceptions import ActorFinished, PipeEmpty, PipeException
+from ..tools import Addressable
 
 logger = setup(to=['file', 'console'])
 
-class ActorRef(object):
+class ActorRef(Addressable):
     """
     An actor reference.
     """
     
     def __init__(self, address):
-        if isinstance(address, (Actor, ActorRef)):
+        if isinstance(address, Addressable):
             self._address = address.address()
         elif isinstance(address, str):
             self._address = (address, 'localhost', None)
@@ -141,7 +142,7 @@ class ActorRef(object):
 def gen_name():
     return str(uuid.uuid1().hex)
     
-class Actor(object):
+class Actor(Addressable):
     """
     Messages to the actor have the form::
 
