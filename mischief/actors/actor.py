@@ -118,7 +118,7 @@ class ActorRef(Addressable):
         Send a message to the actor represented by this reference.
         """
         reply_to = msg.get('reply_to')
-        if isinstance(reply_to, (Actor, ActorRef)):
+        if isinstance(reply_to, Addressable):
             name, ip, port = reply_to.address()
             if is_local_ip(ip):
                 ip = get_local_ip(self.ip)

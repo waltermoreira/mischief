@@ -416,3 +416,8 @@ def test_attribute_access():
 def test_ref_with_proxy(process_actor):
     with ActorRef(process_actor) as ref:
         assert ref.is_alive()
+
+def test_reply_to_proxy(process_actor):
+    with ActorRef(process_actor) as ref:
+        ref.foo(reply_to=process_actor)
+        assert ref.is_alive()
