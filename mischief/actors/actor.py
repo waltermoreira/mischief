@@ -287,11 +287,12 @@ class ThreadedActor(Actor):
     A threaded version of an actor.  It runs as a daemon thread.
     """
     
-    def __init__(self, name=None, ip='localhost'):
+    def __init__(self, name=None, ip='localhost', **kwargs):
         super(ThreadedActor, self).__init__(name, ip)
         self.thread = threading.Thread(target=self.act)
         self.thread.daemon = True
         self.thread.start()
+        self.__dict__.update(kwargs)
 
     @staticmethod
     def spawn(actor, name=None, ip='localhost', **kwargs):

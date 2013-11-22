@@ -333,10 +333,6 @@ def test_threaded_spawn():
 
 def test_threaded_spawn_with_args():
     class T(ThreadedActor):
-        def __init__(self, name=None, ip='localhost', x=0, k=None):
-            super().__init__(name, ip)
-            self.x = x
-            self.k = k
         def act(self):
             self.receive(
                 args = self.args
