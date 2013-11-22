@@ -392,3 +392,14 @@ def test_process_spawn_with_args():
     with ProcessActor.spawn(ArgProcessActor, k=3) as p, ActorRef(p.address()) as p_ref:
         result = p_ref.sync('echo')
         assert result['k'] == 3
+
+def test_ref_with_actor(threaded_actor):
+    with ActorRef(threaded_actor) as t_ref:
+        assert t_ref.address() == threaded_actor.address()
+
+def test_ref_with_ref(threaded_actor):
+    with ActorRef(threaded_actor) as t_ref:
+        with ActorRef(t_ref) as x_ref:
+            assert t_ref.address() == x_ref.address()
+    
+    

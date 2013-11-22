@@ -40,8 +40,12 @@ class ActorRef(object):
     """
     
     def __init__(self, address):
-        self._address = (address if not isinstance(address, str)
-                         else (address, 'localhost', None))
+        if isinstance(address, (Actor, ActorRef)):
+            self._address = address.address()
+        elif isinstance(address, str):
+            self._address = (address, 'localhost', None)
+        else:
+            self._address = address
         self.name, self.ip, self.port = self._address
         self.sender = Sender(self._address)
         self._tag = None
