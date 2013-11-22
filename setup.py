@@ -11,8 +11,10 @@ setup(name='mischief',
       packages=['mischief',
                 'mischief.test'],
       license='LICENSE.txt',
-      long_description=open('README.txt').read(),
+      long_description=open('README.rst').read(),
       install_requires=[
           "pyzmq >= 2.1.12",
-      ],
-      )
+          "pytest >= 2.4",
+          "flexmock"
+      ]
+)
