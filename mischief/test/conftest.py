@@ -38,39 +38,6 @@ def namebroker():
 # # #     ActorRef('t').destroy_actor()
 # # #     ActorRef('p').send({'tag': 'quit'})
 # # #     ActorRef('p').destroy_actor()
-
-# class _threaded_actor(ThreadedActor):
-
-#     def reply5(self, msg):
-#         sender = ActorRef(msg['reply_to'])
-#         sender.answer(answer=5)
-
-#     def reply2(self, msg):
-#         sender = ActorRef(msg['reply_to'])
-#         sender.answer(answer=2)
-
-#     def act(self):
-#         while True:
-#             self.receive(
-#                 reply5 = self.reply5,
-#                 reply2 = self.reply2)
-
-# def pytest_funcarg__t(request):
-#     return request.cached_setup(
-#         setup=lambda: _threaded_actor(name='t'),
-#         teardown=lambda x: x.close(),
-#         scope='session')
-
-# def start_namebroker():
-#     x = NameBroker()
-#     x.start()
-#     return x
-    
-# def pytest_funcarg__nb(request):
-#     return request.cached_setup(
-#         setup=start_namebroker,
-#         teardown=lambda x: x.stop(),
-#         scope='session')
     
 # def pytest_funcarg__p(request):
 #     return request.cached_setup(
