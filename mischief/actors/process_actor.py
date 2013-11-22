@@ -34,7 +34,7 @@ sys.path.append(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../'))
 
 from mischief.actors.actor import Actor, ActorRef
-from mischief.exceptions import ActorFinished, SpawnTimeoutError
+from mischief.exceptions import ActorFinished, SpawnTimeoutError, PipeException
 
 class ProcessActorProxy(object):
     """A proxy to work as a context manager for the process actors."""
@@ -94,6 +94,35 @@ class ProcessActor(Actor):
         except (StopIteration, ActorFinished):
             return
 
+    @staticmethod
+    def spawn(actor, name=None, ip='localhost', **kwargs):
+        """
+        Utility function to start a process actor and initialize it
+        """
+        if name is not None:
+            with ActorRef((name, ip, None)) as ref:
+                # Do not start if it's already alive
+                if ref.is_alive():
+                    return ProcessActorProxy(*ref.full_address())
+        a = actor()
+
+        class Wait(Actor):
+            def act(self):
+                self.success = True
+                self.receive(
+                    finished_init = None,
+                    timed_out = lambda _: setattr(self, 'success', False),
+                    timeout = 5)
+                return self.success
+
+        with ActorRef(a.remote_addr) as ref, Wait() as wait:
+            ref.init(reply_to=wait, **kwargs)
+            if wait.act():
+                return ProcessActorProxy(a.remote_addr, a.pid)
+            else:
+                raise SpawnTimeoutError('failed to init remote process')
+
+            
 class WaitActor(Actor):
     """
     Actor to wait for a message from the client's class saying that
@@ -133,33 +162,6 @@ def start_actor(name, module):
         w_name, _, _ = w.address()
         p = subprocess.Popen(['python', myself, w_name, name, module])
         return w.act()
-
-def spawn(actor, name=None, ip='localhost', **kwargs):
-    """
-    Utility function to start a process actor and initialize it
-    """
-    if name is not None:
-        with ActorRef((name, ip, None)) as ref:
-            # Do not start if it's already alive
-            if ref.is_alive():
-                return ref.full_address()
-    a = actor()
-
-    class Wait(Actor):
-        def act(self):
-            self.success = True
-            self.receive(
-                finished_init = None,
-                timed_out = lambda _: setattr(self, 'success', False),
-                timeout = 5)
-            return self.success
-
-    with ActorRef(a.remote_addr) as ref, Wait() as wait:
-        ref.init(reply_to=wait, **kwargs)
-        if wait.act():
-            return a.remote_addr, a.pid
-        else:
-            raise SpawnTimeoutError('failed to init remote process')
 
 class PEcho(ProcessActor):
 
