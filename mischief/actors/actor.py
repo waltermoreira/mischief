@@ -303,11 +303,17 @@ class ThreadedActor(Actor):
     
     def __init__(self, name=None, ip='localhost', **kwargs):
         super(ThreadedActor, self).__init__(name, ip)
-        self.thread = threading.Thread(target=self.act)
+        self.thread = threading.Thread(target=self.threaded_act)
         self.thread.daemon = True
         self.thread.start()
         self.__dict__.update(kwargs)
 
+    def threaded_act(self):
+        try:
+            self.act()
+        except ActorFinished:
+            pass
+            
     @staticmethod
     def spawn(actor, name=None, ip='localhost', **kwargs):
         """Convenience function for symmetry with process actors."""
