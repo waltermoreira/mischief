@@ -379,4 +379,20 @@ def test_process_close():
             time.sleep(0.01)
         else:
             assert False
-            
+
+class ArgProcessActor(ProcessActor):
+
+    def act(self):
+        while True:
+            self.receive(
+                echo = self.echo
+            )
+
+    def echo(self, msg):
+        with ActorRef(msg['reply_to']) as sender:
+            sender.reply(k=self.k)
+
+def test_process_spawn_with_args():
+    with ProcessActor.spawn(ArgProcessActor, k=3) as p, ActorRef(p.address()) as p_ref:
+        result = p_ref.sync('echo')
+        assert result['k'] == 3
