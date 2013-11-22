@@ -30,8 +30,9 @@ import subprocess
 
 # Add mischief package to sys.path, so the python subprocess can find
 # this same file
-sys.path.append(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../'))
+sys.path.insert(
+    0, os.path.abspath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../')))
 
 from mischief.actors.actor import Actor, ActorRef
 from mischief.exceptions import ActorFinished, SpawnTimeoutError, PipeException
