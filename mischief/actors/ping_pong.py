@@ -1,52 +1,63 @@
 import time
 
-from mischief.actors.actor import ActorRef, spawn, ThreadedActor
+from mischief.actors.actor import Actor, ActorRef, spawn, ThreadedActor
 from mischief.actors.process_actor import ProcessActor
 
 ActorKind = ProcessActor
 
-class Ping(ActorKind):
+class Ticker(ActorKind):
 
     def act(self):
         while True:
-            if self.c >= 1000:
-                self.receive(start_time=self.get_start_time)
-            else:
-                self.receive(ping=self.ping,
-                             set_time=self.set_time)
+            self.receive(
+                set_start_time=self.set_start_time,
+                tick=self.tick,
+            )
 
-    def get_start_time(self, msg):
-        print('Ping starting time:', self.starting_time)
-            
-    def set_time(self, msg):
+    def set_start_time(self, msg):
         self.starting_time = time.time()
 
-    def ping(self, msg):
-        print('ping', self.c)
+    def tick(self, msg):
+        print('tick', self.my_name, self.c)
         self.c += 1
         with ActorRef(msg.reply_to) as sender:
-            sender.pong(reply_to=self)
+            sender.tick(reply_to=self)
+        if self.c == self.max:
+            with ActorRef(self.report_to) as ref:
+                ref.report(
+                    name=self.my_name,
+                    start_time=self.starting_time,
+                    end_time=time.time()
+                )
+            self.receive()
 
-class Pong(ActorKind):
+class Collector(Actor):
 
     def act(self):
-        while True:
-            if self.c >= 999:
-                print('Pong end time:', time.time())
-            self.receive(pong=self.pong)
+        self.receive(report=self.first)
 
-    def pong(self, msg):
-        print('pong', self.c)
-        self.c += 1
-        with ActorRef(msg.reply_to) as sender:
-            sender.ping(reply_to=self)
+    def show(self, msg):
+        print(msg.name)
+        print('Total duration:', msg.end_time - msg.start_time, 'seconds')
+        
+    def first(self, msg):
+        print('--- First Report ---')
+        self.show(msg)
+        self.receive(report=self.second)
 
-
+    def second(self, msg):
+        print('--- Second Report ---')
+        self.show(msg)
+        
+    
 def run():
-    ping = spawn(Ping, c=0)
-    pong = spawn(Pong, c=0)
-    print('Starting')
-    with ActorRef(ping) as ping_ref:
-        ping_ref.set_time()
-        ping_ref.ping(reply_to=pong)
-    return ping, pong
+    with Collector() as collector, \
+         spawn(Ticker, my_name='Ping', c=0, max=1000, report_to=collector.address()) as ping, \
+         spawn(Ticker, my_name='Pong', c=0, max=1000, report_to=collector.address()) as pong, \
+         ActorRef(ping) as ping_ref, \
+         ActorRef(pong) as pong_ref:
+        print('Starting')
+        ping_ref.set_start_time()
+        pong_ref.set_start_time()
+        ping_ref.tick(reply_to=pong_ref)
+        collector.act()
