@@ -364,3 +364,7 @@ class _ReplyWaiter(Actor):
 
     def read_reply(self, msg):
         self.reply = msg
+
+
+def spawn(actor, **kwargs):
+    return actor.spawn(actor, **kwargs)
