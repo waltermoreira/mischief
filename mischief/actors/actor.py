@@ -303,10 +303,10 @@ class ThreadedActor(Actor):
     
     def __init__(self, name=None, ip='localhost', **kwargs):
         super(ThreadedActor, self).__init__(name, ip)
+        self.__dict__.update(kwargs)
         self.thread = threading.Thread(target=self.threaded_act)
         self.thread.daemon = True
         self.thread.start()
-        self.__dict__.update(kwargs)
 
     def threaded_act(self):
         try:

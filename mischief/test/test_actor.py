@@ -355,6 +355,27 @@ def test_threaded_spawn_with_args():
         result = a.act()
         assert result == (5, 'a')
 
+def test_threaded_spawn_with_args_fast():
+    class T(ThreadedActor):
+        def act(self):
+            assert self.x == 0
+            self.receive(get_x=self.get_x)
+        def get_x(self, msg):
+            with ActorRef(msg.reply_to) as sender:
+                sender.reply(x=self.x)
+    class W(Actor):
+        def act(self):
+            self.x = 1
+            self.receive(
+                reply=self.read_value('x'),
+                timeout=0.5
+            )
+            return self.x
+    with ThreadedActor.spawn(T, x=0) as t, ActorRef(t) as t_ref, W() as w:
+        t_ref.get_x(reply_to=w)
+        result = w.act()
+        assert result == 0
+        
 def test_process_spawn(process_actor):
     with ActorRef(process_actor.address()) as p_ref:
         assert p_ref.is_alive()
