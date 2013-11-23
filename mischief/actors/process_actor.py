@@ -188,17 +188,15 @@ if __name__ == '__main__':
     # Signal the base class ``ProcessActor`` to not start a new
     # subprocess (we are already in it!)
     cls.launch = False
-    actor = cls()
-    
-    with ActorRef(wait_name) as wait:
+    with cls() as actor, ActorRef(wait_name) as wait:
         # Tell parent to keep going
         wait.ok(spawn_address=actor.address(), pid=os.getpid())
 
-    # The new process ends when the client's actor finishes its
-    # ``act`` method.
-    try:
-        actor._act()
-    except KeyboardInterrupt:
-        pass
+        # The new process ends when the client's actor finishes its
+        # ``act`` method.
+        try:
+            actor._act()
+        except KeyboardInterrupt:
+            pass
     
 
