@@ -368,3 +368,7 @@ class _ReplyWaiter(Actor):
 
 def spawn(actor, **kwargs):
     return actor.spawn(actor, **kwargs)
+
+def run_forever():
+    with _ReplyWaiter() as w:
+        w.act()
