@@ -58,7 +58,7 @@ def show_msg(msg, width=50, indent=0):
 
     msg = dict(msg)
     fmt = "{}:\n{}"
-    tag = msg.pop('tag')
+    tag = msg.pop('tag', 'timed out')
     fields = '\n'.join('    {} = {}'.format(k, msg[k]) for k in sorted(msg.keys()))
     return fmt.format(tag, fields)
     
