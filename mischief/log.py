@@ -14,6 +14,7 @@ import logging
 import logging.handlers
 import os
 import inspect
+import pprint
 
 formatter = logging.Formatter(
     fmt='%(asctime)s %(levelname)s %(module)s:%(lineno)s %(message)s')
@@ -52,4 +53,13 @@ def setup(**args):
     finally:
         del outer_frame
         
+def show_msg(msg, width=50, indent=0):
+    """Pretty print message"""
 
+    msg = dict(msg)
+    fmt = "{}:\n{}"
+    tag = msg.pop('tag')
+    fields = '\n'.join('    {} = {}'.format(k, msg[k]) for k in sorted(msg.keys()))
+    return fmt.format(tag, fields)
+    
+    
