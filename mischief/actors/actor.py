@@ -29,11 +29,12 @@ import uuid
 import inspect
 
 from .pipe import Receiver, Sender, is_local_ip, get_local_ip
-from ..log import setup
+from ..log import setup, show_msg
 from ..exceptions import ActorFinished, PipeEmpty, PipeException
 from ..tools import Addressable
 
-logger = setup(to=['file', 'console'])
+logger = setup(to=['file'])
+logger.debug('-------------')
 
 class ActorRef(Addressable):
     """
@@ -50,6 +51,7 @@ class ActorRef(Addressable):
         self.name, self.ip, self.port = self._address
         self.sender = Sender(self._address)
         self._tag = None
+        logger.debug('ref({}) created'.format(self.name))
 
     def address(self):
         return self._address
@@ -124,12 +126,15 @@ class ActorRef(Addressable):
                 ip = get_local_ip(self.ip)
             msg['reply_to'] = (name, ip, port)
         self.sender.put(msg)
+        logger.debug('ref --> {}\n{}'.
+                     format(self.name, show_msg(msg, indent=4)))
 
     def close(self):
         """
         Close just the reference
         """
         self.sender.close()
+        logger.debug('ref({}) destroyed'.format(self.name))
 
     def close_actor(self, confirm_to=None):
         """
@@ -158,6 +163,7 @@ class Actor(Addressable):
         self.name = name or gen_name()
         self.ip = ip
         self.inbox = Receiver(self.name, self.ip)
+        logger.debug('{} created'.format(self.name))
 
     def address(self):
         return self.inbox.address()
@@ -183,6 +189,7 @@ class Actor(Addressable):
     def close(self, confirm_to=None):
         confirm_msg = {'tag': 'closed'}
         self.inbox.close(confirm_to, confirm_msg)
+        logger.debug('{} destroyed'.format(self.name))
     
     def read_value(self, value_name):
         def _f(msg):
@@ -268,6 +275,8 @@ class Actor(Addressable):
         elif action is None:
             # None is a shortcut for an empty handler
             f = lambda msg: None
+        logger.debug('{} <-- received:\n{}'.
+                     format(self.name, show_msg(msg, indent=4)))
         f(AttributeDict(msg))
 
     def _debug(self, msg, patterns):
