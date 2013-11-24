@@ -1,6 +1,6 @@
 import time
 
-from mischief.actors.actor import Actor, ActorRef, spawn, ThreadedActor
+from mischief.actors.actor import Actor, ActorRef, spawn, ThreadedActor, run_forever
 from mischief.actors.process_actor import ProcessActor
 
 ActorKind = ProcessActor
@@ -31,7 +31,7 @@ class Ticker(ActorKind):
                 )
             self.receive()
 
-class Collector(Actor):
+class Collector(ActorKind):
 
     def act(self):
         self.receive(report=self.first)
@@ -48,16 +48,17 @@ class Collector(Actor):
     def second(self, msg):
         print('--- Second Report ---')
         self.show(msg)
+        self.receive()
         
     
 def run():
-    with Collector() as collector, \
-         spawn(Ticker, my_name='Ping', c=0, max=1000, report_to=collector.address()) as ping, \
-         spawn(Ticker, my_name='Pong', c=0, max=1000, report_to=collector.address()) as pong, \
+    with spawn(Collector) as collector, \
+         spawn(Ticker, my_name='Ping', c=0, max=10, report_to=collector.address()) as ping, \
+         spawn(Ticker, my_name='Pong', c=0, max=10, report_to=collector.address()) as pong, \
          ActorRef(ping) as ping_ref, \
          ActorRef(pong) as pong_ref:
         print('Starting')
         ping_ref.set_start_time()
         pong_ref.set_start_time()
         ping_ref.tick(reply_to=pong_ref)
-        collector.act()
+        run_forever()
