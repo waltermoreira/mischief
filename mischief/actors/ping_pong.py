@@ -48,11 +48,18 @@ class Collector(ActorKind):
     def second(self, msg):
         print('--- Second Report ---')
         self.show(msg)
+        with ActorRef(self.wait) as waiter:
+            waiter.done()
         self.receive()
         
-    
+class Wait(Actor):
+
+    def wait(self):
+        self.receive(done=None)
+        
 def run():
-    with spawn(Collector) as collector, \
+    with Wait() as w, \
+         spawn(Collector, wait=w.address()) as collector, \
          spawn(Ticker, my_name='Ping', c=0, max=10, report_to=collector.address()) as ping, \
          spawn(Ticker, my_name='Pong', c=0, max=10, report_to=collector.address()) as pong, \
          ActorRef(ping) as ping_ref, \
@@ -61,4 +68,4 @@ def run():
         ping_ref.set_start_time()
         pong_ref.set_start_time()
         ping_ref.tick(reply_to=pong_ref)
-        run_forever()
+        w.wait()
