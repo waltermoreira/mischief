@@ -15,7 +15,7 @@ from contextlib import contextmanager
 
 import zmq
 from .namebroker import NameBrokerClient
-from ..log import setup
+from ..log import setup, show_msg
 from ..zmq_tools import zmq_socket, Context
 from ..exceptions import PipeException, PipeEmpty
 
@@ -112,7 +112,8 @@ class Receiver(object):
         self.reader_thread.name = 'receiver-%s'%(self.name,)
         self.reader_thread.daemon = True
         self.reader_thread.start()
-
+        logger.debug('Receiver {} created'.format(self.name))
+        
     def address(self):
         return (self.name, self.ip, self.port)
         
@@ -126,9 +127,10 @@ class Receiver(object):
     def _reader(self, logger, socket):
         try:
             self._reader_loop(socket)
-            logger.debug('_reader_loop exited')
+            logger.debug('  ..._reader_loop exited')
         finally:
             socket.close()
+            logger.debug('  ...closed Sender socket after reader loop exit')
             
     def _reader_loop(self, socket):
         """
@@ -206,8 +208,8 @@ class Receiver(object):
     def read(self, block=True, timeout=None):
         try:
             x = self.reader_queue.get(block, timeout)
-            logger.debug('Receive at %s' %(self.name,))
-            logger.debug('  message: {}'.format(str(x)))
+            # logger.debug('Receive at %s' %(self.name,))
+            # logger.debug('  message: {}'.format(str(x)))
             return x
         except Empty:
             raise PipeEmpty()
@@ -215,6 +217,7 @@ class Receiver(object):
     def close(self, confirm_to=None, confirm_msg=None):
         with Sender(self.address()) as sender:
             sender.close_receiver(confirm_to, confirm_msg)
+        logger.debug('Receiver {} destroyed'.format(self.name))
         
     # synonym
     get = read
@@ -262,10 +265,10 @@ class Sender(object):
             
         if self.local:
             self.path = path_to(self.name)
-            logger.debug('Sender {} is using ipc'.format(self.name))
+            logger.debug('  ...sender {} is using ipc'.format(self.name))
             self.socket.connect('ipc://{}'.format(self.path))
         else:
-            logger.debug('Sender {self.name} is using '
+            logger.debug('  ...sender {self.name} is using '
                          'tcp://{self.ip}:{self.port}'.format(self=self))
             self.socket.connect('tcp://{self.ip}:{self.port}'
                                 .format(self=self))
@@ -276,6 +279,7 @@ class Sender(object):
                    ('Receiver tcp://{self.ip}:{self.port} '
                     '(name "{self.name}") is not answering'))
             raise PipeException(msg.format(self=self))
+        logger.debug('Sender {} created (in {})'.format(self.name, self.my_actor))
 
     def set_debug_name(self):
         """Name for debugging purposes.
@@ -285,7 +289,7 @@ class Sender(object):
 
         """
         try:
-            self.my_actor = inspect.stack()[3][0].f_locals['self'].__class__
+            self.my_actor = inspect.stack()[3][0].f_locals['self'].__class__.__name__
         except:
             self.my_actor = '%s-%s-%s' %tuple(inspect.stack()[3][1:4])
 
@@ -309,7 +313,7 @@ class Sender(object):
         """
         with zmq_socket(zmq.PULL) as r:
             address = self._temp_receiver(r)
-            logger.debug('reply_to = {}'.format(address))
+#            logger.debug('reply_to = {}'.format(address))
             self.socket.send_json({'tag': '__low_level_ping__',
                                    'reply_to': address})
             try:
@@ -326,12 +330,13 @@ class Sender(object):
         self.close()
         
     def write(self, data):
-        logger.debug('Send from %s to %s' %(self.my_actor, self.name))
-        logger.debug('  message: %s' %(data,))
+        logger.debug('From {} to {}:\n{}'.
+                     format(self.my_actor, self.name, show_msg(data, indent=4)))
         self.socket.send_json(data)
 
     def close(self):
         self.socket.close()
+        logger.debug('Sender {} destroyed'.format(self.name))
 
     def close_receiver(self, confirm_to=None, confirm_msg=None):
         self.put({'tag': '__quit__',

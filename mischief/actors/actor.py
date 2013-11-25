@@ -34,7 +34,7 @@ from ..exceptions import ActorFinished, PipeEmpty, PipeException
 from ..tools import Addressable
 
 logger = setup(to=['file'])
-logger.debug('-------------')
+logger.debug('-'*50)
 
 class ActorRef(Addressable):
     """
@@ -163,7 +163,7 @@ class Actor(Addressable):
         self.name = name or gen_name()
         self.ip = ip
         self.inbox = Receiver(self.name, self.ip)
-        logger.debug('{} created'.format(self.name))
+        logger.debug('{} created ({})'.format(self.name, self.__class__.__name__))
 
     def address(self):
         return self.inbox.address()
@@ -181,6 +181,7 @@ class Actor(Addressable):
         try:
             with ActorRef(self.address()) as myself:
                 myself.close_actor()
+            logger.debug('{} destroyed (via "with")'.format(self.name))
         except PipeException:
             # If actor was already closed, ignore error from the
             # reference trying to ping the actor
