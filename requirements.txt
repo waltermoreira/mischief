@@ -1,0 +1,10 @@
+Jinja2==2.7.3
+MarkupSafe==0.23
+certifi==14.05.14
+flexmock==0.9.7
+gnureadline==6.3.3
+ipython==2.2.0
+py==1.4.23
+pytest==2.6.1
+pyzmq==14.3.1
+tornado==4.0.1
