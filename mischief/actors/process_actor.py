@@ -73,8 +73,11 @@ class ProcessActor(Actor):
     
     def __init__(self, *args, **kwargs):
         if self.launch:
+            class_file = sys.modules[self.__class__.__module__].__file__
+            class_dir = os.path.abspath(os.path.dirname(class_file))
             self.remote_addr, self.pid = start_actor(self.__class__.__name__,
-                                                     self.__class__.__module__)
+                                                     self.__class__.__module__,
+                                                     class_dir)
         else:
             super(ProcessActor, self).__init__(*args, **kwargs)
 
@@ -148,8 +151,8 @@ class WaitActor(Actor):
     def read_reply(self, msg):
         self.spawn_address = msg['spawn_address']
         self.pid = msg['pid']
-        
-def start_actor(name, module):
+
+def start_actor(name, module, class_dir):
     """
     Start a new Python subprocess.
 
@@ -162,7 +165,7 @@ def start_actor(name, module):
         myself = myself[:-1]
     with WaitActor() as w:
         w_name, _, _ = w.address()
-        p = subprocess.Popen(['python', myself, w_name, name, module])
+        p = subprocess.Popen(['python', myself, w_name, name, module, class_dir])
         return w.act()
 
 class PEcho(ProcessActor):
@@ -182,7 +185,8 @@ class PEcho(ProcessActor):
 
     
 if __name__ == '__main__':
-    _, wait_name, actor_class, actor_module = sys.argv
+    _, wait_name, actor_class, actor_module, class_dir = sys.argv
+    sys.path.insert(0, class_dir)
     mod = importlib.import_module(actor_module)
     cls = getattr(mod, actor_class)
     # Signal the base class ``ProcessActor`` to not start a new
