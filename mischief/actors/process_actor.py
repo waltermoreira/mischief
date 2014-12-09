@@ -47,7 +47,7 @@ class ProcessActorProxy(Addressable):
 
     def address(self):
         return self._address
-        
+
     def __enter__(self):
         return self
 
@@ -63,14 +63,14 @@ class ProcessActorProxy(Addressable):
             # reference trying to ping the actor
             pass
 
-    
+
 class ProcessActor(Actor):
 
     # When creating an instance, the first time launch a new Python
     # process. Subsequent times (from inside the new process) just
     # create a regular instance.
     launch = True
-    
+
     def __init__(self, *args, **kwargs):
         if self.launch:
             class_file = sys.modules[self.__class__.__module__].__file__
@@ -91,7 +91,7 @@ class ProcessActor(Actor):
             setattr(self, name, msg[name])
         with ActorRef(msg['reply_to']) as sender:
             sender.finished_init()
-            
+
     def _act(self):
         self.receive(init=self.remote_init)
         try:
@@ -127,16 +127,16 @@ class ProcessActor(Actor):
             else:
                 raise SpawnTimeoutError('failed to init remote process')
 
-            
+
 class WaitActor(Actor):
     """
     Actor to wait for a message from the client's class saying that
     it started ok.
     """
-    
+
     def __init__(self):
         super(WaitActor, self).__init__()
-        
+
     def act(self):
         self.success = True
         self.receive(
@@ -183,7 +183,7 @@ class PEcho(ProcessActor):
         print('Process Echo:')
         print(msg)
 
-    
+
 if __name__ == '__main__':
     _, wait_name, actor_class, actor_module, class_dir = sys.argv
     sys.path.insert(0, class_dir)
@@ -202,5 +202,3 @@ if __name__ == '__main__':
             actor._act()
         except KeyboardInterrupt:
             pass
-    
-
