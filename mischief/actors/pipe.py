@@ -96,11 +96,12 @@ class Receiver(object):
 
     Receiver requires the dependencies: NameBrokerClient and Sender.
     """
-    def __init__(self, name, ip='localhost', use_remote=True):
+    def __init__(self, name, ip='localhost', use_remote=True, ignore_namebroker=True):
         self.name = name
         self.ip = ip
         self.use_remote = use_remote
-        
+        self.ignore_namebroker = ignore_namebroker
+
         self.path = path_to(name)
 
         self.namebroker_client = NameBrokerClient(at=self.ip)
@@ -197,7 +198,11 @@ class Receiver(object):
         if self.use_remote or os.name != 'posix':
             self.port = s.bind_to_random_port(
                 'tcp://*', min_port=MIN_PORT, max_port=MAX_PORT)
-            self.namebroker_client.register(self.name, self.port)
+            try:
+                self.namebroker_client.register(self.name, self.port)
+            except PipeException:
+                if not self.ignore_namebroker:
+                    raise
         else:
             self.port = None
         return s
