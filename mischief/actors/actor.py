@@ -21,7 +21,7 @@ implements the method ``act()``::
 
 import pprint
 import threading
-import queue
+import Queue
 import sys
 import os
 import time
@@ -216,7 +216,7 @@ class Actor(Addressable):
         patterns.update(more_patterns)
         
         inbox_polling = timeout and self.INBOX_POLLING_TIMEOUT
-        processed = queue.Queue()
+        processed = Queue.Queue()
         start_time = current_time = time.time()
         msg = {}
         starting_size = self.inbox.qsize()

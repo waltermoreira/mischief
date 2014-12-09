@@ -8,8 +8,8 @@ import threading
 import traceback
 import socket
 import inspect
-from itertools import zip_longest
-from queue import Queue, Empty
+from itertools import izip_longest
+from Queue import Queue, Empty
 from collections import defaultdict
 from contextlib import contextmanager
 
