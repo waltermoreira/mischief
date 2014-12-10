@@ -4,4 +4,4 @@ mischief.egg-info
 *.pyc
 *~
 *.ipynb
-
+.idea
