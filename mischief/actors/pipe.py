@@ -96,7 +96,8 @@ class Receiver(object):
 
     Receiver requires the dependencies: NameBrokerClient and Sender.
     """
-    def __init__(self, name, ip='localhost', use_remote=True, ignore_namebroker=True):
+    def __init__(self, name, ip='localhost', use_remote=True,
+                 ignore_namebroker=True):
         self.name = name
         self.ip = ip
         self.use_remote = use_remote
