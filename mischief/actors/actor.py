@@ -40,8 +40,8 @@ class ActorRef(Addressable):
     """
     An actor reference.
     """
-    
-    def __init__(self, address):
+
+    def __init__(self, address, remote=True):
         if isinstance(address, Addressable):
             self._address = address.address()
         elif isinstance(address, str):
@@ -51,7 +51,7 @@ class ActorRef(Addressable):
         if len(self._address) == 2:
             self._address = ['remote_actor'] + list(self._address)
         self.name, self.ip, self.port = self._address
-        self.sender = Sender(self._address)
+        self.sender = Sender(self._address, use_local=not remote)
         self._tag = None
         logger.debug('ref({}) created'.format(self.name))
 
@@ -160,11 +160,11 @@ class Actor(Addressable):
     # When a timeout is given in a ``receive``, check every
     # ``INBOX_POLLING_TIMEOUT`` seconds whether we have timed out.
     INBOX_POLLING_TIMEOUT = 0.01
-    
-    def __init__(self, name=None, ip='localhost'):
+
+    def __init__(self, name=None, ip='localhost', remote=True):
         self.name = name or gen_name()
         self.ip = ip
-        self.inbox = Receiver(self.name, self.ip)
+        self.inbox = Receiver(self.name, self.ip, use_remote=remote)
         logger.debug('{} created ({})'.format(self.name, self.__class__.__name__))
 
     def address(self):
