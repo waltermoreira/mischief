@@ -48,6 +48,8 @@ class ActorRef(Addressable):
             self._address = (address, 'localhost', None)
         else:
             self._address = address
+        if len(self._address) == 2:
+            self._address = ['remote_actor'] + list(self._address)
         self.name, self.ip, self.port = self._address
         self.sender = Sender(self._address)
         self._tag = None
