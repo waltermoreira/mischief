@@ -57,7 +57,7 @@ class ActorRef(Addressable):
 
     def address(self):
         return self._address
-        
+
     def sync(self, tag, **kwargs):
         """
         Utility to send a message synchronously
@@ -67,7 +67,7 @@ class ActorRef(Addressable):
             kwargs['reply_to'] = waiter
             self.send(kwargs)
             return waiter.act()
-            
+
     def is_alive(self):
         """
         Send a ping to the associated actor and wait for a pong
@@ -84,7 +84,7 @@ class ActorRef(Addressable):
                        'reply_to': waiter})
             resp = waiter.act()
             return resp['address'], resp['pid']
-        
+
     def __getattr__(self, attr):
         if attr.startswith('_') or attr == 'trait_names':
             raise AttributeError(attr)
@@ -108,7 +108,7 @@ class ActorRef(Addressable):
         ActorRef destroy itself if used as a context manager.
         """
         self.close()
-        
+
     def __call__(self, *args, **kwargs):
         if self._tag is None:
             raise TypeError("actor is not callable")
@@ -116,7 +116,7 @@ class ActorRef(Addressable):
         msg.update(kwargs)
         self.send(msg)
         self._tag = None
-            
+
     def send(self, msg):
         """
         Send a message to the actor represented by this reference.
@@ -148,7 +148,7 @@ class ActorRef(Addressable):
 
 def gen_name():
     return str(uuid.uuid1().hex)
-    
+
 class Actor(Addressable):
     """
     Messages to the actor have the form::
@@ -188,17 +188,17 @@ class Actor(Addressable):
             # If actor was already closed, ignore error from the
             # reference trying to ping the actor
             pass
-            
+
     def close(self, confirm_to=None):
         confirm_msg = {'tag': 'closed'}
         self.inbox.close(confirm_to, confirm_msg)
         logger.debug('{} destroyed'.format(self.name))
-    
+
     def read_value(self, value_name):
         def _f(msg):
             setattr(self, value_name, msg[value_name])
         return _f
-    
+
     def receive(self, patterns=None, timeout=None, **more_patterns):
         """
         ``patterns`` have the form::
@@ -211,12 +211,12 @@ class Actor(Addressable):
 
         * ``*``: matches any tag
         * ``timeout``: is executed when a ``receive`` times out
-        
+
         """
         if patterns is None:
             patterns = {}
         patterns.update(more_patterns)
-        
+
         inbox_polling = timeout and self.INBOX_POLLING_TIMEOUT
         processed = Queue.Queue()
         start_time = current_time = time.time()
@@ -292,7 +292,7 @@ class Actor(Addressable):
         with ActorRef(msg['reply_to']) as sender:
             p = {key:repr(val) for key, val in patterns.items()}
             sender.debug_reply(patterns=p)
-            
+
     def act(self):
         """
         Subclasses must implement this method.
@@ -306,13 +306,13 @@ class AttributeDict(dict):
         return self[attr]
 
     def __setattr__(self, attr, val):
-        self[attr] = val    
+        self[attr] = val
 
 class ThreadedActor(Actor):
     """
     A threaded version of an actor.  It runs as a daemon thread.
     """
-    
+
     def __init__(self, name=None, ip='localhost', **kwargs):
         super(ThreadedActor, self).__init__(name, ip)
         self.__dict__.update(kwargs)
@@ -325,22 +325,22 @@ class ThreadedActor(Actor):
             self.act()
         except ActorFinished:
             pass
-            
+
     @staticmethod
     def spawn(actor, name=None, ip='localhost', **kwargs):
         """Convenience function for symmetry with process actors."""
         return actor(name, ip, **kwargs)
-    
+
 class Echo(ThreadedActor):
     """
     Convenience actor to display responses from other actors.
 
     Use by directing 'reply_to' to this actor.
     """
-    
+
     def __init__(self, ip='localhost'):
         super(Echo, self).__init__(name='echo', ip=ip)
-        
+
     def act(self):
         while True:
             self.receive(
@@ -355,7 +355,7 @@ class _ListenerActor(Actor):
     Utility actor to wait for pongs, when an actor ref sends a
     ping
     """
-    
+
     def wait_pong(self, timeout=0):
         self.receive(
             __pong__ = self.got_pong,
