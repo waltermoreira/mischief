@@ -329,7 +329,7 @@ class ThreadedActor(Actor):
     @staticmethod
     def spawn(actor, name=None, ip='localhost', **kwargs):
         """Convenience function for symmetry with process actors."""
-        return actor(name, ip, **kwargs)
+        return actor(name=name, ip=ip, **kwargs)
 
 class Echo(ThreadedActor):
     """
