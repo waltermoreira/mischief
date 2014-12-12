@@ -8,10 +8,14 @@ import threading
 import traceback
 import socket
 import inspect
-from itertools import izip_longest
-from Queue import Queue, Empty
+from six.moves import zip_longest
+from six.moves import queue
 from collections import defaultdict
 from contextlib import contextmanager
+
+
+Queue = queue.Queue
+Empty = queue.Empty
 
 import zmq
 from .namebroker import NameBrokerClient
