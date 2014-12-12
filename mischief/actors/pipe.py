@@ -19,7 +19,7 @@ from ..log import setup, show_msg
 from ..zmq_tools import zmq_socket, Context
 from ..exceptions import PipeException, PipeEmpty
 
-logger = setup(to=['file'])
+logger = setup(to=['file', 'console'])
 
 MIN_PORT = 50000
 MAX_PORT = 60000
