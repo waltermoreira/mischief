@@ -47,7 +47,7 @@ class ProcessActorProxy(Addressable):
 
     def address(self):
         return self._address
-        
+
     def __enter__(self):
         return self
 
@@ -63,18 +63,21 @@ class ProcessActorProxy(Addressable):
             # reference trying to ping the actor
             pass
 
-    
+
 class ProcessActor(Actor):
 
     # When creating an instance, the first time launch a new Python
     # process. Subsequent times (from inside the new process) just
     # create a regular instance.
     launch = True
-    
+
     def __init__(self, *args, **kwargs):
         if self.launch:
+            class_file = sys.modules[self.__class__.__module__].__file__
+            class_dir = os.path.abspath(os.path.dirname(class_file))
             self.remote_addr, self.pid = start_actor(self.__class__.__name__,
-                                                     self.__class__.__module__)
+                                                     self.__class__.__module__,
+                                                     class_dir)
         else:
             super(ProcessActor, self).__init__(*args, **kwargs)
 
@@ -88,7 +91,7 @@ class ProcessActor(Actor):
             setattr(self, name, msg[name])
         with ActorRef(msg['reply_to']) as sender:
             sender.finished_init()
-            
+
     def _act(self):
         self.receive(init=self.remote_init)
         try:
@@ -124,16 +127,16 @@ class ProcessActor(Actor):
             else:
                 raise SpawnTimeoutError('failed to init remote process')
 
-            
+
 class WaitActor(Actor):
     """
     Actor to wait for a message from the client's class saying that
     it started ok.
     """
-    
+
     def __init__(self):
         super(WaitActor, self).__init__()
-        
+
     def act(self):
         self.success = True
         self.receive(
@@ -148,8 +151,8 @@ class WaitActor(Actor):
     def read_reply(self, msg):
         self.spawn_address = msg['spawn_address']
         self.pid = msg['pid']
-        
-def start_actor(name, module):
+
+def start_actor(name, module, class_dir):
     """
     Start a new Python subprocess.
 
@@ -162,7 +165,7 @@ def start_actor(name, module):
         myself = myself[:-1]
     with WaitActor() as w:
         w_name, _, _ = w.address()
-        p = subprocess.Popen(['python', myself, w_name, name, module])
+        p = subprocess.Popen(['python', myself, w_name, name, module, class_dir])
         return w.act()
 
 class PEcho(ProcessActor):
@@ -180,15 +183,16 @@ class PEcho(ProcessActor):
         print('Process Echo:')
         print(msg)
 
-    
+
 if __name__ == '__main__':
-    _, wait_name, actor_class, actor_module = sys.argv
+    _, wait_name, actor_class, actor_module, class_dir = sys.argv
+    sys.path.insert(0, class_dir)
     mod = importlib.import_module(actor_module)
     cls = getattr(mod, actor_class)
     # Signal the base class ``ProcessActor`` to not start a new
     # subprocess (we are already in it!)
     cls.launch = False
-    with cls() as actor, ActorRef(wait_name) as wait:
+    with cls() as actor, ActorRef(wait_name, remote=False) as wait:
         # Tell parent to keep going
         wait.ok(spawn_address=actor.address(), pid=os.getpid())
 
@@ -198,5 +202,3 @@ if __name__ == '__main__':
             actor._act()
         except KeyboardInterrupt:
             pass
-    
-

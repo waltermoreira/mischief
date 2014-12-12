@@ -8,10 +8,14 @@ import threading
 import traceback
 import socket
 import inspect
-from itertools import zip_longest
-from queue import Queue, Empty
+from six.moves import zip_longest
+from six.moves import queue
 from collections import defaultdict
 from contextlib import contextmanager
+
+
+Queue = queue.Queue
+Empty = queue.Empty
 
 import zmq
 from .namebroker import NameBrokerClient
@@ -96,11 +100,13 @@ class Receiver(object):
 
     Receiver requires the dependencies: NameBrokerClient and Sender.
     """
-    def __init__(self, name, ip='localhost', use_remote=True):
+    def __init__(self, name, ip='localhost', use_remote=True,
+                 ignore_namebroker=True):
         self.name = name
         self.ip = ip
         self.use_remote = use_remote
-        
+        self.ignore_namebroker = ignore_namebroker
+
         self.path = path_to(name)
 
         self.namebroker_client = NameBrokerClient(at=self.ip)
@@ -197,7 +203,11 @@ class Receiver(object):
         if self.use_remote or os.name != 'posix':
             self.port = s.bind_to_random_port(
                 'tcp://*', min_port=MIN_PORT, max_port=MAX_PORT)
-            self.namebroker_client.register(self.name, self.port)
+            try:
+                self.namebroker_client.register(self.name, self.port)
+            except PipeException:
+                if not self.ignore_namebroker:
+                    raise
         else:
             self.port = None
         return s
@@ -296,7 +306,7 @@ class Sender(object):
     def _temp_receiver(self, recv_socket):
         """Create a temporary socket to listen for replies."""
         if self.local:
-            addr = 'ipc://__{}__'.format(self.name)
+            addr = 'ipc://{}'.format(path_to('__{}__'.format(self.name)))
             recv_socket.bind(addr)
             return addr
         else:

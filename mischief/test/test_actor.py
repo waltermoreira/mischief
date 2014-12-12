@@ -171,7 +171,7 @@ def test_many_msgs(namebroker):
 
 def test_non_existent_actor_ref():
     with pytest.raises(PipeException):
-        with ActorRef('foobar') as ref:
+        with ActorRef('foobar', remote=False) as ref:
             pass
 
 def test_existent_actor_ref(threaded_actor):
