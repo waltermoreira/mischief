@@ -51,7 +51,6 @@ class ActorRef(Addressable):
         if len(self._address) == 2:
             self._address = ['remote_actor'] + list(self._address)
         self.name, self.ip, self.port = self._address
-        print('>>>>>>>>', self._address)
         self.sender = Sender(self._address, use_local=not remote)
         self._tag = None
         logger.debug('ref({}) created'.format(self.name))
