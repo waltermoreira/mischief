@@ -302,7 +302,7 @@ class Sender(object):
     def _temp_receiver(self, recv_socket):
         """Create a temporary socket to listen for replies."""
         if self.local:
-            addr = 'ipc://__{}__'.format(self.name)
+            addr = 'ipc://{}'.format(path_to('__{}__'.format(self.name)))
             recv_socket.bind(addr)
             return addr
         else:
