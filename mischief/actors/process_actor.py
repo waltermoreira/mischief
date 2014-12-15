@@ -124,7 +124,9 @@ class ProcessActor(Actor):
             kwargs['ip'] = ip
             ref.init(reply_to=wait, **kwargs)
             if wait.act():
-                return ProcessActorProxy(a.remote_addr, a.pid)
+                remote = list(a.remote_addr)
+                remote[1] = ip
+                return ProcessActorProxy(remote, a.pid)
             else:
                 raise SpawnTimeoutError('failed to init remote process')
 
