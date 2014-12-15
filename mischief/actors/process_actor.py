@@ -121,6 +121,7 @@ class ProcessActor(Actor):
                 return self.success
 
         with ActorRef(a.remote_addr) as ref, Wait() as wait:
+            kwargs['ip'] = ip
             ref.init(reply_to=wait, **kwargs)
             if wait.act():
                 return ProcessActorProxy(a.remote_addr, a.pid)
