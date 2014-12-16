@@ -23,7 +23,7 @@ logger = setup(to=['file'])
 MIN_PORT = 50000
 MAX_PORT = 60000
 
-ACTORS_DIRECTORY = '/tmp/actors_%s' %os.environ.get('USER', 'NO_USER')
+ACTORS_DIRECTORY = '/tmp/actors_{}'.format(os.environ.get('USER', 'NO_USER'))
 try:
     # create directory to put the named pipes
     os.makedirs(ACTORS_DIRECTORY)
@@ -35,7 +35,7 @@ except OSError as exc:
 # Set some time to wait for sockets to deliver messages
 # We don't want infinite time, since it may block when exiting
 # the application
-Context.linger = 5000 # ms
+Context.linger = 5000  # ms
 
 
 def path_to(name):
@@ -54,16 +54,16 @@ def get_local_ip(target):
     ipaddr = ''
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        s.connect((target, 8000)) # 8000 is just a dummy number, it
-                                  # doesn't actually connect to the
-                                  # port
+        # 8000 is just a dummy number, it doesn't actually connect to
+        # the port
+        s.connect((target, 8000))
         s.send(b'1')
         ipaddr = s.getsockname()[0]
     except socket.error:
         pass
     finally:
         s.close()
-    return ipaddr 
+    return ipaddr
 
 
 def is_local_ip(target):
@@ -110,7 +110,7 @@ class Receiver(object):
         self.path = path_to(name)
 
         self.namebroker_client = NameBrokerClient(at=self.ip)
-        
+
         self.reader_queue = Queue()
         socket = self.setup_reader()
         self.reader_thread = threading.Thread(target=self._reader,
@@ -119,10 +119,10 @@ class Receiver(object):
         self.reader_thread.daemon = True
         self.reader_thread.start()
         logger.debug('Receiver {} created'.format(self.name))
-        
+
     def address(self):
         return self.name, self.ip, self.port
-        
+
     def __enter__(self):
         return self
 
@@ -137,7 +137,7 @@ class Receiver(object):
         finally:
             socket.close()
             logger.debug('  ...closed Sender socket after reader loop exit')
-            
+
     def _reader_loop(self, socket):
         """
         Thread function that reads the zmq socket and puts the data
@@ -194,7 +194,7 @@ class Receiver(object):
                 logger.debug(exc)
                 return
             queue.put(data)
-        
+
     def setup_reader(self):
         """Create the socket for the reader and bind it."""
         s = Context.socket(zmq.PULL)
@@ -211,10 +211,10 @@ class Receiver(object):
         else:
             self.port = None
         return s
-        
+
     def qsize(self):
         return self.reader_queue.qsize()
-        
+
     def read(self, block=True, timeout=None):
         try:
             x = self.reader_queue.get(block, timeout)
@@ -223,12 +223,12 @@ class Receiver(object):
             return x
         except Empty:
             raise PipeEmpty()
-        
+
     def close(self, confirm_to=None, confirm_msg=None):
         with Sender(self.address()) as sender:
             sender.close_receiver(confirm_to, confirm_msg)
         logger.debug('Receiver {} destroyed'.format(self.name))
-        
+
     # synonym
     get = read
 
@@ -239,7 +239,7 @@ def get_port_for(name, at):
                                       '__name__': name})
     return resp['__port__']
 
-        
+
 class Sender(object):
     """The sender end of a pipe.
 
@@ -272,7 +272,7 @@ class Sender(object):
         self.local = (use_local and is_local_ip(self.ip)
                       if os.name == 'posix' else False)
         self.socket = Context.socket(zmq.PUSH)
-            
+
         if self.local:
             self.path = path_to(self.name)
             logger.debug('  ...sender {} is using ipc'.format(self.name))
@@ -282,10 +282,10 @@ class Sender(object):
                          'tcp://{self.ip}:{self.port}'.format(self=self))
             self.socket.connect('tcp://{self.ip}:{self.port}'
                                 .format(self=self))
-            
+
         if not self.__ping__():
             msg = ('Receiver ipc://{self.name} is not answering'
-                   if self.local else 
+                   if self.local else
                    ('Receiver tcp://{self.ip}:{self.port} '
                     '(name "{self.name}") is not answering'))
             raise PipeException(msg.format(self=self))
@@ -316,7 +316,7 @@ class Sender(object):
                 'tcp://*', min_port=MIN_PORT, max_port=MAX_PORT)
             ip = get_local_ip(self.ip)
             return 'tcp://{}:{}'.format(ip, port)
-            
+
     def __ping__(self):
         """Low level ping.
 
@@ -333,13 +333,13 @@ class Sender(object):
                 return resp['tag'] == '__pong__'
             except zmq.Again:
                 return False
-            
+
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
-        
+
     def write(self, data):
         logger.debug('From {} to {}:\n{}'.
                      format(self.my_actor, self.name,
@@ -354,10 +354,9 @@ class Sender(object):
         self.put({'tag': '__quit__',
                   'confirm_to': confirm_to,
                   'confirm_msg': confirm_msg})
-        
+
     # synonym
     put = write
 
     def __del__(self):
         self.close()
-

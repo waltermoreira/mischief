@@ -9,7 +9,7 @@ class Register(ProcessActor):
     """
     An actor to register process we want to kill before quitting.
     """
-    
+
     def __init__(self):
         super(Register, self).__init__('Register')
         self.processes = {}
@@ -22,12 +22,12 @@ class Register(ProcessActor):
                 killall=self.killall,
                 show=self.show
             )
-        
+
     def show(self, msg):
         print('List of processes registered:')
         for pid, name in self.processes.items():
             print('{:5d}: {}'.format(pid, name))
-            
+
     def register(self, msg):
         self.processes[msg.pid] = msg.name
 
@@ -36,10 +36,10 @@ class Register(ProcessActor):
             del self.processes[pid]
         except KeyError:
             pass
-        
+
     def unregister(self, msg):
         self._unregister(msg.pid)
-        
+
     def killall(self, msg):
         for pid, name in self.processes.items():
             try:
@@ -52,4 +52,3 @@ class Register(ProcessActor):
             except OSError:
                 pass
             self._unregister(pid)
-

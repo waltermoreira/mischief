@@ -289,7 +289,7 @@ class Actor(Addressable):
 
         """
         with ActorRef(msg['reply_to']) as sender:
-            p = {key:repr(val) for key, val in patterns.items()}
+            p = {key: repr(val) for key, val in patterns.items()}
             sender.debug_reply(patterns=p)
 
     def act(self):
@@ -361,9 +361,9 @@ class _ListenerActor(Actor):
 
     def wait_pong(self, timeout=0):
         self.receive(
-            __pong__ = self.got_pong,
-            timed_out = self.timed_out,
-            timeout = timeout)
+            __pong__=self.got_pong,
+            timed_out=self.timed_out,
+            timeout=timeout)
 
     def got_pong(self, msg):
         self.pong = True

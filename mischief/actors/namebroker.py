@@ -12,7 +12,7 @@ logger = setup(to=['file'])
 
 class Server(object):
     """A generic REQ/REP server."""
-    
+
     def __init__(self, ip, port):
         self.ip = ip
         self.port = port
@@ -20,13 +20,13 @@ class Server(object):
 
     def setup(self):
         pass
-        
+
     @property
     def name(self):
         return '{}-{}:{}'.format(type(self).__name__,
                                  self.ip,
                                  self.port)
-        
+
     def start(self):
         self.thread = threading.Thread(target=self._server,
                                        args=(logger,))
@@ -41,7 +41,7 @@ class Server(object):
             s.send_json({'__quit__': True})
             s.recv_json()
             self.thread.join()
-            
+
     def _server(self, logger):
         with zmq_socket(zmq.REP) as s:
             s.bind('tcp://{}:{}'.format(self.ip, self.port))
@@ -72,14 +72,14 @@ class NameBroker(Server):
         x = NameBroker()
         x.start()
         x.stop()
-    
+
     """
 
     PORT = 5555
 
     def __init__(self):
         super(NameBroker, self).__init__('*', self.PORT)
-        
+
     def setup(self):
         self.names = {}
 
@@ -94,7 +94,7 @@ class NameBroker(Server):
         name = data['__name__']
         port = self.names.get(name, None)
         return {'__port__': port}
-        
+
     def register(self, data):
         name = data['__name__']
         port = data['__port__']
@@ -112,11 +112,11 @@ class NameBroker(Server):
 
     def ping(self, data):
         return {'__pong__': True}
-        
+
     def is_alive(self):
         return self.thread.is_alive()
 
-        
+
 class NameBrokerClient(object):
     """
     Client for the NameBroker server.
@@ -125,9 +125,9 @@ class NameBrokerClient(object):
 
         y = NameBrokerClient()
         y.list()
-    
+
     """
-    
+
     def __init__(self, at='localhost'):
         self.addr = at
 
@@ -174,4 +174,3 @@ class NameBrokerClient(object):
                 raise PipeException(
                     'cannot connect to NameBroker at {}:{}'
                     .format(at, NameBroker.PORT))
-

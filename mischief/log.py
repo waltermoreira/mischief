@@ -28,7 +28,7 @@ def setup(**args):
         module: module name (default to module where setup is used)
         filename: (default to module name, no extension)
         directory: (default to /tmp)
-    
+
     """
     destinations = args['to']
     if isinstance(destinations, str):

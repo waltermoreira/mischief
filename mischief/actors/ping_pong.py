@@ -42,7 +42,7 @@ class Collector(ActorKind):
     def show(self, msg):
         print(msg.name)
         print('Total duration:', msg.end_time - msg.start_time, 'seconds')
-        
+
     def first(self, msg):
         print('--- First Report ---')
         self.show(msg)

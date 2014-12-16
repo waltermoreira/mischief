@@ -115,9 +115,9 @@ class ProcessActor(Actor):
             def act(self):
                 self.success = True
                 self.receive(
-                    finished_init = None,
-                    timed_out = lambda _: setattr(self, 'success', False),
-                    timeout = 5)
+                    finished_init=None,
+                    timed_out=lambda _: setattr(self, 'success', False),
+                    timeout=5)
                 return self.success
 
         with ActorRef(a.remote_addr) as ref, Wait() as wait:
@@ -143,9 +143,9 @@ class WaitActor(Actor):
     def act(self):
         self.success = True
         self.receive(
-            ok = self.read_reply,
-            timed_out = lambda _: setattr(self, 'success', False),
-            timeout = 5
+            ok=self.read_reply,
+            timed_out=lambda _: setattr(self, 'success', False),
+            timeout=5
         )
         if not self.success:
             raise SpawnTimeoutError("did not get 'ok' from subprocess")
@@ -169,7 +169,7 @@ def start_actor(name, module, class_dir):
         myself = myself[:-1]
     with WaitActor() as w:
         w_name, _, _ = w.address()
-        p = subprocess.Popen(['python', myself, w_name, name, module, class_dir])
+        subprocess.Popen(['python', myself, w_name, name, module, class_dir])
         return w.act()
 
 
@@ -181,7 +181,7 @@ class PEcho(ProcessActor):
     def act(self):
         while True:
             self.receive(
-                _ = self.do_pecho
+                _=self.do_pecho
             )
 
     def do_pecho(self, msg):

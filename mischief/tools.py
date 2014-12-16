@@ -3,11 +3,13 @@ import sys
 import os
 from contextlib import contextmanager
 
+
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
     a, b = itertools.tee(iterable)
     next(b, None)
     return itertools.izip(a, b)
+
 
 def scanl(f, iterable):
     """
@@ -17,6 +19,7 @@ def scanl(f, iterable):
     for x in iterable:
         prev = f(prev, x) if prev is not None else x
         yield prev
+
 
 @contextmanager
 def no_stdout():
@@ -31,6 +34,7 @@ def no_stdout():
     finally:
         sys.stdout = old_stdout
 
+
 @contextmanager
 def no_stderr():
     """
@@ -43,6 +47,7 @@ def no_stderr():
         yield
     finally:
         sys.stderr = old_stderr
+
 
 class Addressable(object):
     """Interface for addressable objects."""
