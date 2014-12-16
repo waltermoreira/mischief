@@ -7,8 +7,6 @@ run in an independent process.
 
 Use as::
 
-    from het2_common.actors.process_actor import ProcessActor
-
     class MyActor(ProcessActor):
 
         def __init__(self):
@@ -21,6 +19,7 @@ Launch actor with:
     spawn(MyActor, foo=4)
 
 Keyword arguments are set in the actor in the new process.
+
 """
 
 import sys
@@ -35,8 +34,10 @@ sys.path.insert(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../')))
 
 from mischief.actors.actor import Actor, ActorRef
-from mischief.exceptions import ActorFinished, SpawnTimeoutError, PipeException
+from mischief.exceptions import (ActorFinished, SpawnTimeoutError,
+                                 PipeException)
 from mischief.tools import Addressable
+
 
 class ProcessActorProxy(Addressable):
     """A proxy to work as a context manager for the process actors."""
@@ -75,9 +76,8 @@ class ProcessActor(Actor):
         if self.launch:
             class_file = sys.modules[self.__class__.__module__].__file__
             class_dir = os.path.abspath(os.path.dirname(class_file))
-            self.remote_addr, self.pid = start_actor(self.__class__.__name__,
-                                                     self.__class__.__module__,
-                                                     class_dir)
+            self.remote_addr, self.pid = start_actor(
+                self.__class__.__name__, self.__class__.__module__, class_dir)
         else:
             super(ProcessActor, self).__init__(*args, **kwargs)
 
@@ -155,6 +155,7 @@ class WaitActor(Actor):
         self.spawn_address = msg['spawn_address']
         self.pid = msg['pid']
 
+
 def start_actor(name, module, class_dir):
     """
     Start a new Python subprocess.
@@ -170,6 +171,7 @@ def start_actor(name, module, class_dir):
         w_name, _, _ = w.address()
         p = subprocess.Popen(['python', myself, w_name, name, module, class_dir])
         return w.act()
+
 
 class PEcho(ProcessActor):
 

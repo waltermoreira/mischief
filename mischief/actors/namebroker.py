@@ -6,7 +6,9 @@ from ..zmq_tools import zmq_socket
 from ..exceptions import PipeException
 from ..log import setup
 
+
 logger = setup(to=['file'])
+
 
 class Server(object):
     """A generic REQ/REP server."""

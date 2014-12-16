@@ -4,22 +4,23 @@ import signal
 from .process_actor import ProcessActor
 from .actor import ActorRef
 
+
 class Register(ProcessActor):
     """
     An actor to register process we want to kill before quitting.
     """
     
     def __init__(self):
-        super().__init__('Register')
+        super(Register, self).__init__('Register')
         self.processes = {}
 
     def act(self):
         while True:
             self.receive(
-                register = self.register,
-                unregister = self.unregister,
-                killall = self.killall,
-                show = self.show
+                register=self.register,
+                unregister=self.unregister,
+                killall=self.killall,
+                show=self.show
             )
         
     def show(self, msg):
