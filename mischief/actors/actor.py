@@ -1,9 +1,6 @@
 """
-:mod:`het2_common.actors.actor` -- Actor library
-=============================================
-
-.. module:: actor
-.. moduleauthor:: Walter Moreira <moreira@astro.as.utexas.edu>
+Actor library
+=============
 
 An implementation of the `actor model`_.
 
@@ -22,19 +19,18 @@ implements the method ``act()``::
 import pprint
 import threading
 from six.moves import queue
-import sys
-import os
 import time
 import uuid
-import inspect
 
 from .pipe import Receiver, Sender, is_local_ip, get_local_ip
 from ..log import setup, show_msg
 from ..exceptions import ActorFinished, PipeEmpty, PipeException
 from ..tools import Addressable
 
+
 logger = setup(to=['file'])
 logger.debug('-'*50)
+
 
 class ActorRef(Addressable):
     """
@@ -143,11 +139,13 @@ class ActorRef(Addressable):
         Remotely stop the actor with the internal message '_quit'
         """
         confirm_msg = {'tag': 'closed'}
-        self.sender.close_receiver(confirm_to=confirm_to, confirm_msg=confirm_msg)
+        self.sender.close_receiver(confirm_to=confirm_to,
+                                   confirm_msg=confirm_msg)
 
 
 def gen_name():
     return str(uuid.uuid1().hex)
+
 
 class Actor(Addressable):
     """
@@ -165,7 +163,8 @@ class Actor(Addressable):
         self.name = name or gen_name()
         self.ip = ip
         self.inbox = Receiver(self.name, self.ip, use_remote=remote)
-        logger.debug('{} created ({})'.format(self.name, self.__class__.__name__))
+        logger.debug('{} created ({})'
+                     .format(self.name, self.__class__.__name__))
 
     def address(self):
         return self.inbox.address()
@@ -299,6 +298,7 @@ class Actor(Addressable):
         """
         raise NotImplementedError
 
+
 class AttributeDict(dict):
     """A dict that can access keys via attributes"""
 
@@ -307,6 +307,7 @@ class AttributeDict(dict):
 
     def __setattr__(self, attr, val):
         self[attr] = val
+
 
 class ThreadedActor(Actor):
     """
@@ -331,6 +332,7 @@ class ThreadedActor(Actor):
         """Convenience function for symmetry with process actors."""
         return actor(name=name, ip=ip, **kwargs)
 
+
 class Echo(ThreadedActor):
     """
     Convenience actor to display responses from other actors.
@@ -344,11 +346,12 @@ class Echo(ThreadedActor):
     def act(self):
         while True:
             self.receive(
-                _ = self.echo)
+                _=self.echo)
 
     def echo(self, msg):
         print('[Echo]')
         pprint.pprint(msg, width=1)
+
 
 class _ListenerActor(Actor):
     """
@@ -368,6 +371,7 @@ class _ListenerActor(Actor):
     def timed_out(self, msg):
         self.pong = False
 
+
 class _ReplyWaiter(Actor):
 
     def act(self):
@@ -377,13 +381,16 @@ class _ReplyWaiter(Actor):
     def read_reply(self, msg):
         self.reply = msg
 
+
 class Wait(Actor):
 
     def act(self):
         self.receive()
 
+
 def spawn(actor, **kwargs):
     return actor.spawn(actor, **kwargs)
+
 
 def run_forever():
     with _ReplyWaiter() as w:
