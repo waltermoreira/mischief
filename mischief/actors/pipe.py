@@ -1,27 +1,22 @@
-import time
-import struct
-import uuid
-import json
 import errno
 import os
 import threading
 import traceback
 import socket
 import inspect
-from six.moves import zip_longest
 from six.moves import queue
-from collections import defaultdict
-from contextlib import contextmanager
 
 
 Queue = queue.Queue
 Empty = queue.Empty
+
 
 import zmq
 from .namebroker import NameBrokerClient
 from ..log import setup, show_msg
 from ..zmq_tools import zmq_socket, Context
 from ..exceptions import PipeException, PipeEmpty
+
 
 logger = setup(to=['file'])
 
@@ -42,9 +37,11 @@ except OSError as exc:
 # the application
 Context.linger = 5000 # ms
 
+
 def path_to(name):
     """Path for posix ipc socket with name ``name``."""
     return os.path.join(ACTORS_DIRECTORY, name)
+
 
 def get_local_ip(target):
     """Get the *local* ip.
@@ -68,11 +65,13 @@ def get_local_ip(target):
         s.close()
     return ipaddr 
 
+
 def is_local_ip(target):
     """Check that ``target`` is a local ip."""
     if target in (None, 'localhost', '127.0.0.1'):
         return True
     return target == get_local_ip(target)
+
 
 class Receiver(object):
     """A receiver end of a pipe.
@@ -99,6 +98,7 @@ class Receiver(object):
         {'tag': '__pong__'}
 
     Receiver requires the dependencies: NameBrokerClient and Sender.
+
     """
     def __init__(self, name, ip='localhost', use_remote=True,
                  ignore_namebroker=True):
@@ -115,13 +115,13 @@ class Receiver(object):
         socket = self.setup_reader()
         self.reader_thread = threading.Thread(target=self._reader,
                                               args=(logger, socket))
-        self.reader_thread.name = 'receiver-%s'%(self.name,)
+        self.reader_thread.name = 'receiver-{}'.format(self.name)
         self.reader_thread.daemon = True
         self.reader_thread.start()
         logger.debug('Receiver {} created'.format(self.name))
         
     def address(self):
-        return (self.name, self.ip, self.port)
+        return self.name, self.ip, self.port
         
     def __enter__(self):
         return self
@@ -199,7 +199,7 @@ class Receiver(object):
         """Create the socket for the reader and bind it."""
         s = Context.socket(zmq.PULL)
         if os.name == 'posix':
-            s.bind('ipc://%s' %self.path)
+            s.bind('ipc://{}'.format(self.path))
         if self.use_remote or os.name != 'posix':
             self.port = s.bind_to_random_port(
                 'tcp://*', min_port=MIN_PORT, max_port=MAX_PORT)
@@ -289,7 +289,8 @@ class Sender(object):
                    ('Receiver tcp://{self.ip}:{self.port} '
                     '(name "{self.name}") is not answering'))
             raise PipeException(msg.format(self=self))
-        logger.debug('Sender {} created (in {})'.format(self.name, self.my_actor))
+        logger.debug('Sender {} created (in {})'
+                     .format(self.name, self.my_actor))
 
     def set_debug_name(self):
         """Name for debugging purposes.
@@ -299,9 +300,10 @@ class Sender(object):
 
         """
         try:
-            self.my_actor = inspect.stack()[3][0].f_locals['self'].__class__.__name__
+            self.my_actor = (inspect.stack()[3][0].f_locals['self']
+                             .__class__.__name__)
         except:
-            self.my_actor = '%s-%s-%s' %tuple(inspect.stack()[3][1:4])
+            self.my_actor = '{}-{}-{}'.format(*inspect.stack()[3][1:4])
 
     def _temp_receiver(self, recv_socket):
         """Create a temporary socket to listen for replies."""
@@ -323,7 +325,6 @@ class Sender(object):
         """
         with zmq_socket(zmq.PULL) as r:
             address = self._temp_receiver(r)
-#            logger.debug('reply_to = {}'.format(address))
             self.socket.send_json({'tag': '__low_level_ping__',
                                    'reply_to': address})
             try:
@@ -341,7 +342,8 @@ class Sender(object):
         
     def write(self, data):
         logger.debug('From {} to {}:\n{}'.
-                     format(self.my_actor, self.name, show_msg(data, indent=4)))
+                     format(self.my_actor, self.name,
+                            show_msg(data, indent=4)))
         self.socket.send_json(data)
 
     def close(self):
