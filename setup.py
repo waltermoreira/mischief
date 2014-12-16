@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-import os
 from setuptools import setup, find_packages
+
 
 setup(name='mischief',
       version='0.1.0',

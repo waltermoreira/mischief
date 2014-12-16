@@ -5,6 +5,7 @@ import zmq
 
 Context = zmq.Context()
 
+
 @contextmanager
 def zmq_socket(zmq_type):
     """Context manager for zmq sockets.
